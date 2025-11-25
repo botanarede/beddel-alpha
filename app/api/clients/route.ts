@@ -1,6 +1,6 @@
-export {
-  dynamic,
-  POST,
-  PUT,
-  DELETE,
-} from "beddel/server/api/clientsRoute";
+import { POST, PUT, DELETE } from "beddel/server/api/clientsRoute";
+
+// Next.js route config must be defined locally (can't be re-exported)
+export const dynamic = "force-dynamic";
+
+export { POST, PUT, DELETE };

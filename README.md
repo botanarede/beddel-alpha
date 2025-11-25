@@ -1,54 +1,40 @@
-# Opal Support App
+# Beddel Alpha Example
 
-A Next.js app that manages API clients and dynamic endpoints, with a secure GraphQL endpoint to execute registered methods. Upstash Redis (via @upstash/redis) is the data store.
+Aplicação Next.js que demonstra o uso do pacote `beddel` publicado no npm (`beddel@0.1.0`), com páginas de showcase (`/`, `/beddel-alpha`), Storybook e APIs de exemplo.
 
-## Quickstart
+## Repositórios
+- Pacote core: https://github.com/botanarede/beddel-alpha
+- App de exemplo: https://github.com/botanarede/beddel-alpha-example
 
-Prerequisites:
+## Pré-requisitos
 - Node.js 18+
-- Upstash Redis credentials
+- Credenciais Upstash KV (`KV_REST_API_URL`, `KV_REST_API_TOKEN`) se for usar as rotas de API/GraphQL.
+- API key Gemini em `.env` se quiser exercitar o agente Joker na rota `/beddel-alpha`.
 
-1. Install dependencies
-
+## Setup rápido
+1) Instalar dependências
 ```bash
 pnpm install
 ```
 
-2. Configure environment
-
-Create a `.env` file in the project root:
-
+2) Criar `.env` na raiz (exemplo mínimo):
 ```
 KV_REST_API_URL="YOUR_KV_REST_API_URL"
 KV_REST_API_TOKEN="YOUR_KV_REST_API_TOKEN"
+GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
 ```
 
-3. Run the dev server
-
+3) Rodar em desenvolvimento
 ```bash
 pnpm dev
 ```
+Acesse http://localhost:3000 e a demo em http://localhost:3000/beddel-alpha.
 
-Open http://localhost:3000
-
-4. Seed example data (optional)
-
-```bash
-npx dotenv-cli -- npx tsx scripts/seed.ts
-```
-
-5. Run Storybook (optional)
-
+4) Storybook (opcional)
 ```bash
 pnpm storybook
 ```
 
-6. OpenAPI spec
-
-See `openapi.yaml` for the complete API specification including curl examples.
-
-## Testing
-
-```bash
-pnpm test
-```
+## Notas
+- A dependência `beddel` vem do npm; não há pasta `packages/beddel` neste repositório.
+- `pnpm test` ainda não está configurado aqui (scripts são placeholders). Use os testes end-to-end/manual via UI ou adapte conforme suas ferramentas.
