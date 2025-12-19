@@ -1,6 +1,6 @@
 {
   "name": "beddel",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Beddel - A secure YAML parser and OpenAPI endpoint manager for Node.js applications",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -23,6 +23,10 @@
     "./server/*": {
       "types": "./dist/server/*.d.ts",
       "default": "./dist/server/*.js"
+    },
+    "./server/api/graphql": {
+      "types": "./dist/server/api/graphql.d.ts",
+      "default": "./dist/server/api/graphql.js"
     }
   },
   "scripts": {
