@@ -7,6 +7,8 @@ exports.getGraphQLSchema = getGraphQLSchema;
 exports.executeRegisteredMethod = executeRegisteredMethod;
 exports.handleGraphQLPost = handleGraphQLPost;
 exports.handleGraphQLGet = handleGraphQLGet;
+const graphql_1 = require("graphql");
+const graphql_yoga_1 = require("graphql-yoga");
 const agentRegistry_1 = require("../../agents/agentRegistry");
 const kvStore_1 = require("../kvStore");
 const runtimeSecurity_1 = require("../runtimeSecurity");
@@ -20,6 +22,37 @@ const schema = `
 function getGraphQLSchema() {
     return schema;
 }
+const parseJsonLiteral = (ast) => {
+    switch (ast.kind) {
+        case graphql_1.Kind.STRING:
+        case graphql_1.Kind.BOOLEAN:
+            return ast.value;
+        case graphql_1.Kind.INT:
+            return parseInt(ast.value, 10);
+        case graphql_1.Kind.FLOAT:
+            return parseFloat(ast.value);
+        case graphql_1.Kind.OBJECT: {
+            const value = {};
+            for (const field of ast.fields) {
+                value[field.name.value] = parseJsonLiteral(field.value);
+            }
+            return value;
+        }
+        case graphql_1.Kind.LIST:
+            return ast.values.map(parseJsonLiteral);
+        case graphql_1.Kind.NULL:
+            return null;
+        default:
+            return null;
+    }
+};
+const jsonScalar = new graphql_1.GraphQLScalarType({
+    name: "JSON",
+    description: "Arbitrary JSON value",
+    serialize: (value) => value,
+    parseValue: (value) => value,
+    parseLiteral: (ast) => parseJsonLiteral(ast),
+});
 async function executeRegisteredMethod(input, clientId) {
     const startTime = Date.now();
     const context = {
@@ -113,68 +146,77 @@ async function executeRegisteredMethod(input, clientId) {
         return { success: false, error: errorMessage, executionTime };
     }
 }
-async function handleGraphQLPost(request) {
-    try {
-        let clientId;
-        const authHeader = request.headers.get("authorization");
-        if (authHeader && authHeader.startsWith("Bearer ")) {
-            const apiKey = authHeader.substring(7);
-            if (!(0, runtimeSecurity_1.isValidApiKey)(apiKey)) {
-                throw new errors_1.AuthenticationError("Invalid API key format");
-            }
-            const client = await (0, kvStore_1.getClientByApiKey)(apiKey);
-            if (!client)
-                throw new errors_1.AuthenticationError("Invalid API key");
-            const rateLimitOk = await (0, kvStore_1.checkRateLimit)(client.id, client.rateLimit);
-            if (!rateLimitOk)
-                throw new errors_1.RateLimitError("Rate limit exceeded.");
-            clientId = client.id;
+async function resolveClientId(request) {
+    const authHeader = request.headers.get("authorization");
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+        const apiKey = authHeader.substring(7);
+        if (!(0, runtimeSecurity_1.isValidApiKey)(apiKey)) {
+            throw new errors_1.AuthenticationError("Invalid API key format");
         }
-        else if (request.headers.get("x-admin-tenant") === "true") {
-            clientId = "admin_tenant";
-        }
-        else {
-            throw new errors_1.AuthenticationError("Missing or invalid authorization header");
-        }
-        const body = await request.json();
-        if (!body.query) {
-            throw new errors_1.ValidationError("Missing query in request body");
-        }
-        if (body.query && body.query.includes("executeMethod")) {
-            if (!body.variables || !body.variables.methodName) {
-                throw new errors_1.ValidationError("Missing 'variables' or 'methodName' in request body");
-            }
-            const result = await executeRegisteredMethod({
-                methodName: body.variables.methodName,
-                params: body.variables.params || {},
-                props: body.variables.props || {},
-            }, clientId);
-            return Response.json({ data: { executeMethod: result } });
-        }
-        return Response.json({ errors: [{ message: "Unsupported operation" }] }, { status: 400 });
+        const client = await (0, kvStore_1.getClientByApiKey)(apiKey);
+        if (!client)
+            throw new errors_1.AuthenticationError("Invalid API key");
+        const rateLimitOk = await (0, kvStore_1.checkRateLimit)(client.id, client.rateLimit);
+        if (!rateLimitOk)
+            throw new errors_1.RateLimitError("Rate limit exceeded.");
+        return client.id;
     }
-    catch (error) {
-        const status = error instanceof errors_1.AuthenticationError
-            ? 401
-            : error instanceof errors_1.RateLimitError
-                ? 429
-                : error instanceof errors_1.ValidationError
-                    ? 400
-                    : error instanceof errors_1.NotFoundError
-                        ? 404
-                        : 500;
-        return Response.json({
-            errors: [
-                {
-                    message: error instanceof Error ? error.message : "Internal server error",
-                },
-            ],
-        }, { status });
+    if (request.headers.get("x-admin-tenant") === "true") {
+        return "admin_tenant";
     }
+    throw new errors_1.AuthenticationError("Missing or invalid authorization header");
 }
-function handleGraphQLGet() {
-    return new Response(`<!DOCTYPE html>
-    <html><head><title>Opal Support API - GraphQL</title><style>body{font-family:sans-serif;max-width:800px;margin:50px auto;padding:20px}code,pre{background:#f4f4f4;padding:4px 8px;border-radius:4px}</style></head>
-    <body><h1>Opal Support API</h1><p>GraphQL endpoint for executing registered methods.</p><h2>Endpoint</h2><code>POST /api/graphql</code><h2>Authentication</h2><p>Use Bearer token in Authorization header.</p><h2>Schema</h2><pre>${schema}</pre></body></html>`, { headers: { "Content-Type": "text/html" } });
+function toGraphQLError(error) {
+    const message = error instanceof Error ? error.message : "Internal server error";
+    let code = "INTERNAL_SERVER_ERROR";
+    if (error instanceof errors_1.AuthenticationError) {
+        code = "UNAUTHENTICATED";
+    }
+    else if (error instanceof errors_1.RateLimitError) {
+        code = "RATE_LIMITED";
+    }
+    else if (error instanceof errors_1.ValidationError) {
+        code = "BAD_USER_INPUT";
+    }
+    else if (error instanceof errors_1.NotFoundError) {
+        code = "NOT_FOUND";
+    }
+    return new graphql_1.GraphQLError(message, { extensions: { code } });
+}
+const yoga = (0, graphql_yoga_1.createYoga)({
+    schema: (0, graphql_yoga_1.createSchema)({
+        typeDefs: schema,
+        resolvers: {
+            JSON: jsonScalar,
+            Query: {
+                ping: () => "pong",
+            },
+            Mutation: {
+                executeMethod: async (_parent, args, context) => {
+                    try {
+                        const clientId = await resolveClientId(context.request);
+                        return await executeRegisteredMethod({
+                            methodName: args.methodName,
+                            params: args.params || {},
+                            props: args.props || {},
+                        }, clientId);
+                    }
+                    catch (error) {
+                        throw toGraphQLError(error);
+                    }
+                },
+            },
+        },
+    }),
+    context: ({ request }) => ({ request }),
+    graphqlEndpoint: "/api/graphql",
+    graphiql: true,
+    fetchAPI: { Request, Response },
+});
+async function handleGraphQLPost(request) {
+    return yoga.handleRequest(request, {});
+}
+async function handleGraphQLGet(request) {
+    return yoga.handleRequest(request, {});
 }
 //# sourceMappingURL=graphql.js.map

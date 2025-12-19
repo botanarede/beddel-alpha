@@ -275,18 +275,30 @@ metadata:
 
 ## GraphQL API
 
+Beddel ships a native GraphQL endpoint powered by GraphQL Yoga.
+
 ### Endpoint
 
 ```
+GET /api/graphql
 POST /api/graphql
 ```
 
 ### Authentication
 
+`executeMethod` requires an API key (or admin header). GraphiQL and schema
+introspection are always enabled.
+
 Include your API key in the Authorization header:
 
 ```http
 Authorization: Bearer your-api-key
+```
+
+Admin mode (no API key):
+
+```http
+x-admin-tenant: true
 ```
 
 ### Schema
@@ -314,12 +326,30 @@ type ExecutionResult {
 
 ### Example Request
 
+Using variables (recommended):
+
 ```bash
 curl -X POST http://localhost:3000/api/graphql \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer your-api-key" \
   -d '{
-    "query": "mutation { executeMethod(methodName: \"joker.execute\", params: {}, props: { gemini_api_key: \"your-gemini-key\" }) { success data } }"
+    "query": "mutation Execute($methodName: String!, $params: JSON!, $props: JSON!) { executeMethod(methodName: $methodName, params: $params, props: $props) { success data error executionTime } }",
+    "variables": {
+      "methodName": "joker.execute",
+      "params": {},
+      "props": { "gemini_api_key": "your-gemini-key" }
+    }
+  }'
+```
+
+Inline arguments:
+
+```bash
+curl -X POST http://localhost:3000/api/graphql \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your-api-key" \
+  -d '{
+    "query": "mutation { executeMethod(methodName: \"joker.execute\", params: {}, props: { gemini_api_key: \"your-gemini-key\" }) { success data error executionTime } }"
   }'
 ```
 

@@ -225,20 +225,21 @@ output:
 ### Via GraphQL API
 
 ```graphql
-mutation {
-  executeMethod(
-    methodName: "greeting.execute"
-    params: { 
-      name: "Alice",
-      language: "en"
-    }
-    props: { gemini_api_key: "your-api-key" }
-  ) {
+mutation Execute($methodName: String!, $params: JSON!, $props: JSON!) {
+  executeMethod(methodName: $methodName, params: $params, props: $props) {
     success
     data
     error
     executionTime
   }
+}
+```
+
+```json
+{
+  "methodName": "greeting.execute",
+  "params": { "name": "Alice", "language": "en" },
+  "props": { "gemini_api_key": "your-api-key" }
 }
 ```
 

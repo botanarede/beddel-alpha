@@ -215,18 +215,26 @@ output:
 
 2. **The agent is automatically registered** when your application starts.
 
-3. **Execute via GraphQL or directly**:
+3. **Execute via GraphQL or directly** (GraphQL Yoga, introspection always enabled). GraphiQL is available at `GET /api/graphql`:
 
 ```graphql
-mutation {
-  executeMethod(
-    methodName: "greeting.execute"
-    params: { name: "Alice" }
-    props: { gemini_api_key: "your-api-key" }
-  ) {
+mutation Execute($methodName: String!, $params: JSON!, $props: JSON!) {
+  executeMethod(methodName: $methodName, params: $params, props: $props) {
     success
     data
+    error
+    executionTime
   }
+}
+```
+
+Example variables:
+
+```json
+{
+  "methodName": "greeting.execute",
+  "params": { "name": "Alice" },
+  "props": { "gemini_api_key": "your-api-key" }
 }
 ```
 
