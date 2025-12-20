@@ -102,12 +102,39 @@ export { AuditService } from "./runtime/audit";
 export { PerformanceMonitor } from "./performance/monitor";
 export { default as AutoScaler } from "./performance/autoscaling";
 
-// Multi-Tenant Firebase exports
+// Multi-Tenant Firebase exports (deprecated - use tenant module instead)
 export { MultiTenantFirebaseManager } from "./firebase/tenantManager";
+export type {
+  TenantConfig as LegacyTenantConfig,
+  TenantIsolationResult as LegacyTenantIsolationResult,
+} from "./firebase/tenantManager";
+
+// Agnostic Multi-Tenant exports (recommended)
+export {
+  TenantManager,
+  createProvider,
+  isValidProviderType,
+  getSupportedProviders,
+  InMemoryTenantProvider,
+  FirebaseTenantProvider,
+  TenantError,
+  ValidationError,
+  NotFoundError,
+  NotSupportedError,
+  TenantAlreadyExistsError,
+} from "./tenant";
 export type {
   TenantConfig,
   TenantIsolationResult,
-} from "./firebase/tenantManager";
+  ProviderType,
+  FirebaseProviderConfig,
+  MemoryProviderConfig,
+  ITenantProvider,
+  ITenantApp,
+  ITenantDatabase,
+  ITenantCollection,
+  ITenantDocument,
+} from "./tenant";
 
 // Compliance exports
 export { GDPRCompliance } from "./compliance/gdprEngine";

@@ -1,6 +1,28 @@
 /**
  * Multi-Tenant Firebase Manager v2025
  * Isolamento completo de tenants com LGPD/GDPR compliance automático
+ *
+ * @deprecated This module is deprecated and will be removed in a future version.
+ * Use the new provider-agnostic tenant module instead:
+ *
+ * ```typescript
+ * // Old (deprecated):
+ * import { MultiTenantFirebaseManager } from 'beddel/firebase/tenantManager';
+ *
+ * // New (recommended):
+ * import { TenantManager, FirebaseTenantProvider } from 'beddel/tenant';
+ *
+ * const manager = TenantManager.getInstance();
+ * await manager.initializeTenant({
+ *   tenantId: 'my-tenant',
+ *   provider: 'firebase',
+ *   providerConfig: { projectId, databaseURL, storageBucket },
+ *   // ... other config
+ * });
+ * ```
+ *
+ * @see {@link ../tenant/TenantManager} for the new implementation
+ * @see {@link ../tenant/providers/FirebaseTenantProvider} for Firebase-specific provider
  */
 
 import * as admin from "firebase-admin";
@@ -32,6 +54,10 @@ export interface TenantIsolationResult {
   };
 }
 
+/**
+ * @deprecated Use {@link TenantManager} from 'beddel/tenant' instead.
+ * This class is maintained for backward compatibility only.
+ */
 export class MultiTenantFirebaseManager {
   private static instance: MultiTenantFirebaseManager;
   private tenants: Map<string, admin.app.App>;
