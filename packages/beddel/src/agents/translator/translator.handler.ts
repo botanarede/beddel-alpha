@@ -2,29 +2,27 @@ import 'server-only';
 
 /**
  * Translator Agent Handler - Server-only execution logic
- * Translates text between languages using Gemini Flash
+ * Translates text between languages using LLM providers
  */
 
 import { generateText } from 'ai';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { LLMProviderFactory, extractProviderConfig } from '../../runtime/llmProviderFactory';
 import type { ExecutionContext } from '../../types/executionContext';
 import type { TranslationHandlerParams, TranslationHandlerResult } from './translator.types';
 
-const GEMINI_MODEL = 'models/gemini-2.5-flash';
 const SUPPORTED_LANGUAGES = ['pt', 'en', 'es', 'fr'];
 
 /**
- * Execute translation using Gemini Flash
+ * Execute translation using configured LLM provider
  */
 export async function executeTranslationHandler(
   params: TranslationHandlerParams,
   props: Record<string, string>,
   context: ExecutionContext
 ): Promise<TranslationHandlerResult> {
-  const apiKey = props?.gemini_api_key?.trim();
-  if (!apiKey) {
-    throw new Error('Missing required prop: gemini_api_key');
-  }
+  const providerConfig = extractProviderConfig(props, 'google');
+  const model = LLMProviderFactory.createLanguageModel(providerConfig);
+  const modelName = providerConfig.model || LLMProviderFactory.getDefaultModel(providerConfig.provider);
 
   const text = params.text?.trim();
   const sourceLanguage = params.source_language?.trim().toLowerCase();
@@ -39,7 +37,8 @@ export async function executeTranslationHandler(
     return {
       translated_text: text,
       metadata: {
-        model_used: GEMINI_MODEL,
+        model_used: modelName,
+        provider: providerConfig.provider,
         processing_time: 0,
         confidence: 1,
         supported_languages: SUPPORTED_LANGUAGES,
@@ -65,8 +64,6 @@ Text:
     .replace(/{{target_language}}/g, targetLanguage)
     .trim();
 
-  const google = createGoogleGenerativeAI({ apiKey });
-  const model = google(GEMINI_MODEL);
   const startTime = Date.now();
 
   context.log(`[Translator] Translating from ${sourceLanguage} to ${targetLanguage}`);
@@ -79,13 +76,14 @@ Text:
 
   const finalText = translatedText?.trim() || '';
   if (!finalText) {
-    throw new Error('Gemini Flash translation returned empty response');
+    throw new Error('LLM translation returned empty response');
   }
 
   return {
     translated_text: finalText,
     metadata: {
-      model_used: GEMINI_MODEL,
+      model_used: modelName,
+      provider: providerConfig.provider,
       processing_time: Date.now() - startTime,
       confidence: 0.85,
       supported_languages: SUPPORTED_LANGUAGES,

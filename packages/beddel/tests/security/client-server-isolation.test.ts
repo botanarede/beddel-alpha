@@ -260,6 +260,7 @@ describe('Client/Server Isolation', () => {
       expect(isStepTypeSupported('chromadb')).toBe(true);
       expect(isStepTypeSupported('gitmcp')).toBe(true);
       expect(isStepTypeSupported('rag')).toBe(true);
+      expect(isStepTypeSupported('llm')).toBe(true);
       expect(isStepTypeSupported('chat')).toBe(true);
       
       // Legacy step types (backward compatibility)

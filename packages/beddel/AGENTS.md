@@ -25,7 +25,7 @@ This document provides essential context for AI agents and developers working on
 | Directory | Purpose | Key Files |
 |-----------|---------|-----------|
 | `src/parser` | Secure YAML parsing with FAILSAFE schema | `SecureYamlParser` |
-| `src/runtime` | Isolated execution, declarative interpreter, workflow executor | `DeclarativeAgentInterpreter`, `workflowExecutor` |
+| `src/runtime` | Isolated execution, declarative interpreter, workflow executor, LLM provider factory | `DeclarativeAgentInterpreter`, `workflowExecutor`, `LLMProviderFactory` |
 | `src/agents` | Agent registry and sharded agent modules | `AgentRegistry`, `*/index.ts`, `*/*.handler.ts` |
 | `src/shared` | Client-safe types and utilities | `types/`, `utils/` |
 | `src/client` | Client-safe exports | `index.ts`, `types.ts` |
@@ -104,18 +104,25 @@ src/agents/joker/
 
 ### Supported Workflow Step Types
 
-| Step Type | Description | Required Props |
-|-----------|-------------|----------------|
-| `output-generator` | Returns literal or computed values | — |
-| `genkit-joke` | Generates jokes via Gemini | `gemini_api_key` |
-| `genkit-translation` | Translates text via Gemini | `gemini_api_key` |
-| `genkit-image` | Generates images via Gemini | `gemini_api_key` |
-| `mcp-tool` | Invokes MCP server tools | — |
-| `gemini-vectorize` | Generates text embeddings | `gemini_api_key` |
-| `chromadb` | Vector storage and retrieval | — |
-| `gitmcp` | Fetches GitHub documentation | — |
-| `rag` | RAG answer generation | `gemini_api_key` |
-| `custom-action` | Executes custom TypeScript functions | Varies |
+| Step Type | Description | Required Props | Status |
+|-----------|-------------|----------------|--------|
+| `output-generator` | Returns literal or computed values | — | Active |
+| `joke` | Generates jokes via LLM | `gemini_api_key` | **Preferred** |
+| `translation` | Translates text via LLM | `gemini_api_key` | **Preferred** |
+| `image` | Generates images via LLM | `gemini_api_key` | **Preferred** |
+| `vectorize` | Generates text embeddings | `gemini_api_key` | **Preferred** |
+| `mcp-tool` | Invokes MCP server tools | — | Active |
+| `chromadb` | Vector storage and retrieval | — | Active |
+| `gitmcp` | Fetches GitHub documentation | — | Active |
+| `rag` | RAG answer generation | `gemini_api_key` | Active |
+| `chat` | RAG pipeline orchestrator | `gemini_api_key` | Active |
+| `custom-action` | Executes custom TypeScript functions | Varies | Active |
+| `genkit-joke` | **DEPRECATED** - Use `joke` | `gemini_api_key` | Deprecated |
+| `genkit-translation` | **DEPRECATED** - Use `translation` | `gemini_api_key` | Deprecated |
+| `genkit-image` | **DEPRECATED** - Use `image` | `gemini_api_key` | Deprecated |
+| `gemini-vectorize` | **DEPRECATED** - Use `vectorize` | `gemini_api_key` | Deprecated |
+
+> ⚠️ **Deprecation Notice**: Step types prefixed with `genkit-` and `gemini-` are deprecated. Use the preferred names (`joke`, `translation`, `image`, `vectorize`) instead. Legacy names will be removed in v1.0.
 
 ### Built-in Agents
 

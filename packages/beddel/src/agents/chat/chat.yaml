@@ -9,7 +9,7 @@ agent:
 
 metadata:
   name: "Q&A Context Chat Agent"
-  description: "Orchestrates RAG pipeline or simple chat based on mode selection"
+  description: "Orchestrates RAG pipeline or direct LLM chat based on mode selection"
   category: "chat"
   route: "/agents/chat"
   knowledge_sources:
@@ -18,8 +18,8 @@ metadata:
     - "chat"
     - "orchestrator"
     - "rag"
+    - "llm"
     - "qa"
-    - "simple"
 
 schema:
   input:
@@ -87,19 +87,18 @@ logic:
         output:
           _extracted: true
 
-    # Step 2: Mode branch - Simple chat or RAG pipeline
+    # Step 2: Mode branch - Simple LLM chat or RAG pipeline
     - name: "mode-check"
       type: "conditional"
       condition: "$input.mode == 'simple'"
       then:
-        # Simple mode: Direct LLM chat with conversation history
+        # Simple mode: Direct LLM chat with conversation history (no documents)
         - name: "simple-chat"
-          type: "rag"
+          type: "llm"
           action:
             query: "$input.query"
             history: "$input.messages"
-            mode: "simple"
-            result: "ragResult"
+            result: "llmResult"
       else:
         # RAG mode: Full pipeline with knowledge base
         - name: "vectorize-query"
@@ -132,7 +131,6 @@ logic:
             query: "$input.query"
             documents: "$searchResult.documents"
             history: "$input.messages"
-            mode: "rag"
             result: "ragResult"
 
     # Step 3: Deliver final response

@@ -2,32 +2,35 @@ import 'server-only';
 
 /**
  * Gemini Vectorize Agent Handler - Server-only execution logic
- * Generates text embeddings using Google's Gemini text-embedding-004 model
+ * Generates text embeddings using Google's text-embedding-004 model
+ * 
+ * Note: Embeddings currently only support Google provider via Vercel AI SDK
  */
 
 import { embed, embedMany } from 'ai';
-import { google } from '@ai-sdk/google';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { extractProviderConfig } from '../../runtime/llmProviderFactory';
 import type { ExecutionContext } from '../../types/executionContext';
 import type { VectorizeHandlerParams, VectorizeHandlerResult } from './gemini-vectorize.types';
 
-const GEMINI_EMBEDDING_MODEL = 'text-embedding-004';
+const EMBEDDING_MODEL = 'text-embedding-004';
 
 /**
- * Execute vectorization using Gemini embeddings
+ * Execute vectorization using embeddings
  */
 export async function executeVectorizeHandler(
   params: VectorizeHandlerParams,
   props: Record<string, string>,
   context: ExecutionContext
 ): Promise<VectorizeHandlerResult> {
-  const apiKey = props?.gemini_api_key?.trim();
-  if (!apiKey) {
-    throw new Error('Missing required prop: gemini_api_key');
+  const providerConfig = extractProviderConfig(props, 'google');
+  
+  // Currently only Google supports embeddings via Vercel AI SDK
+  if (providerConfig.provider !== 'google') {
+    throw new Error(`Embeddings are currently only supported with Google provider, got: ${providerConfig.provider}`);
   }
 
-  // Set API key in environment for google provider
-  process.env.GOOGLE_GENERATIVE_AI_API_KEY = apiKey;
-
+  const google = createGoogleGenerativeAI({ apiKey: providerConfig.apiKey });
   const action = params.action || 'embedSingle';
 
   try {
@@ -37,10 +40,10 @@ export async function executeVectorizeHandler(
         throw new Error('Text input is required for embedSingle');
       }
 
-      context.log(`[Gemini Vectorize] Embedding single text (${text.length} chars)...`);
+      context.log(`[Vectorize] Embedding single text (${text.length} chars)...`);
 
       const { embedding } = await embed({
-        model: google.textEmbeddingModel(GEMINI_EMBEDDING_MODEL),
+        model: google.textEmbeddingModel(EMBEDDING_MODEL),
         value: text,
       });
 
@@ -52,10 +55,10 @@ export async function executeVectorizeHandler(
         throw new Error('Texts array input is required for embedBatch');
       }
 
-      context.log(`[Gemini Vectorize] Embedding batch of ${texts.length} texts...`);
+      context.log(`[Vectorize] Embedding batch of ${texts.length} texts...`);
 
       const { embeddings } = await embedMany({
-        model: google.textEmbeddingModel(GEMINI_EMBEDDING_MODEL),
+        model: google.textEmbeddingModel(EMBEDDING_MODEL),
         values: texts,
       });
 
@@ -66,7 +69,7 @@ export async function executeVectorizeHandler(
     }
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    context.log(`[Gemini Vectorize] Error: ${message}`);
+    context.log(`[Vectorize] Error: ${message}`);
     return { success: false, error: message };
   }
 }

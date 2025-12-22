@@ -10,7 +10,7 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/src/comp
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { DebugSidebar } from "./DebugSidebar";
-import { sendChatMessage } from "@/src/lib/chat-api";
+import { sendChatMessage, type ChatMode } from "@/src/lib/chat-api";
 import type { ConversationMessage, ExecutionStep } from "beddel";
 
 export function ChatInterface() {
@@ -21,6 +21,7 @@ export function ChatInterface() {
   const [executionSteps, setExecutionSteps] = useState<ExecutionStep[]>([]);
   const [totalDuration, setTotalDuration] = useState<number | undefined>();
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+  const [chatMode, setChatMode] = useState<ChatMode>("simple");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -38,7 +39,7 @@ export function ChatInterface() {
 
     try {
       const allMessages = [...messages, userMessage];
-      const response = await sendChatMessage(allMessages);
+      const response = await sendChatMessage(allMessages, chatMode);
 
       if (response.success && response.data) {
         const assistantMessage: ConversationMessage = { role: "assistant", content: response.data.response };
@@ -67,15 +68,34 @@ export function ChatInterface() {
             <Card className="h-full flex flex-col glass-card border-border/50">
               {/* Header */}
               <div className="p-6 border-b border-border/50 flex-shrink-0">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-primary/10">
-                    <Sparkles className="h-6 w-6 text-primary" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-xl bg-primary/10">
+                      <Sparkles className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                        Beddel Chat
+                      </h1>
+                      <p className="text-sm text-muted-foreground">AI-powered Q&A Assistant</p>
+                    </div>
                   </div>
-                  <div>
-                    <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-                      Beddel Chat
-                    </h1>
-                    <p className="text-sm text-muted-foreground">AI-powered Q&A Assistant</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Mode:</span>
+                    <Button
+                      variant={chatMode === "simple" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setChatMode("simple")}
+                    >
+                      Simple
+                    </Button>
+                    <Button
+                      variant={chatMode === "rag" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setChatMode("rag")}
+                    >
+                      RAG
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -128,10 +148,27 @@ export function ChatInterface() {
                 Beddel Chat
               </h1>
             </div>
-            <Button variant="outline" size="sm" onClick={() => setShowMobileSidebar(true)} className="gap-2">
-              <Bug className="h-4 w-4" />
-              Debug
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant={chatMode === "simple" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setChatMode("simple")}
+                className="text-xs px-2"
+              >
+                Simple
+              </Button>
+              <Button
+                variant={chatMode === "rag" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setChatMode("rag")}
+                className="text-xs px-2"
+              >
+                RAG
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setShowMobileSidebar(true)} className="gap-2">
+                <Bug className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           <div className="flex-1 min-h-0">

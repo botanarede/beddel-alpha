@@ -2,7 +2,7 @@ import 'server-only';
 
 /**
  * Chat Agent Handler - Server-only execution logic
- * Orchestrates RAG pipeline or simple chat based on mode
+ * Orchestrates RAG pipeline or simple LLM chat based on mode
  */
 
 import type { ExecutionContext } from '../../types/executionContext';
@@ -11,11 +11,12 @@ import type { ChatHandlerParams, ChatHandlerResult, ChatMode } from './chat.type
 import { executeVectorizeHandler } from '../gemini-vectorize/gemini-vectorize.handler';
 import { executeChromaDBHandler } from '../chromadb/chromadb.handler';
 import { executeRagHandler } from '../rag/rag.handler';
+import { executeLlmHandler } from '../llm/llm.handler';
 
 const KNOWLEDGE_COLLECTION = 'beddel_knowledge';
 
 /**
- * Execute simple chat mode - direct LLM with conversation history
+ * Execute simple chat mode - direct LLM with conversation history (no documents)
  */
 async function executeSimpleChat(
   query: string,
@@ -29,7 +30,7 @@ async function executeSimpleChat(
   context.log(`[Chat:Simple] Processing query: "${query.substring(0, 50)}..."`);
 
   const chatStep: ExecutionStep = {
-    agent: 'rag',
+    agent: 'llm',
     action: 'chat',
     status: 'running',
     startTime: Date.now(),
@@ -37,8 +38,8 @@ async function executeSimpleChat(
   };
   executionSteps.push(chatStep);
 
-  const result = await executeRagHandler(
-    { query, history: messages, mode: 'simple' },
+  const result = await executeLlmHandler(
+    { query, history: messages },
     props,
     context
   );
@@ -139,7 +140,7 @@ async function executeRagChat(
   searchStep.endTime = Date.now();
   searchStep.duration = searchStep.endTime - searchStep.startTime;
 
-  // Step 4: Generate answer
+  // Step 4: Generate answer using RAG
   const ragStep: ExecutionStep = {
     agent: 'rag',
     action: 'generate',
@@ -150,14 +151,15 @@ async function executeRagChat(
   executionSteps.push(ragStep);
 
   const hasDocuments = searchResult.documents && searchResult.documents.trim().length > 0;
+  const documents = hasDocuments
+    ? searchResult.documents
+    : 'No specific documentation available. Answer based on general knowledge.';
 
-  const ragResult = hasDocuments
-    ? await executeRagHandler({ query, documents: searchResult.documents, history: messages }, props, context)
-    : await executeRagHandler(
-        { query, documents: 'No specific documentation available. Answer based on general knowledge.', history: messages },
-        props,
-        context
-      );
+  const ragResult = await executeRagHandler(
+    { query, documents, history: messages },
+    props,
+    context
+  );
 
   ragStep.status = ragResult.error ? 'error' : 'success';
   ragStep.endTime = Date.now();

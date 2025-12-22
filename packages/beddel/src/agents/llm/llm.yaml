@@ -1,0 +1,87 @@
+# LLM Agent - Native Builtin Agent for Beddel Runtime
+# Route: /agents/llm
+# Method: llm.execute
+
+agent:
+  id: llm
+  version: 1.0.0
+  protocol: beddel-declarative-protocol/v2.0
+
+metadata:
+  name: "LLM Chat Agent"
+  description: "Direct LLM interaction with conversation history support (non-RAG)"
+  category: "intelligence"
+  route: "/agents/llm"
+  tags:
+    - "llm"
+    - "chat"
+    - "gemini"
+    - "conversation"
+
+schema:
+  input:
+    type: "object"
+    properties:
+      query:
+        type: "string"
+        description: "User message to respond to"
+      history:
+        type: "array"
+        items:
+          type: "object"
+          properties:
+            role:
+              type: "string"
+              enum: ["user", "assistant", "system"]
+            content:
+              type: "string"
+        description: "Conversation history for context continuity"
+      temperature:
+        type: "number"
+        minimum: 0
+        maximum: 2
+        default: 0.7
+        description: "LLM temperature for response generation"
+      systemPrompt:
+        type: "string"
+        description: "Custom system prompt for the LLM"
+    required: ["query"]
+
+  output:
+    type: "object"
+    properties:
+      response:
+        type: "string"
+        description: "Generated response"
+      timestamp:
+        type: "string"
+        description: "ISO timestamp of generation"
+      error:
+        type: "string"
+    required: ["response"]
+
+logic:
+  workflow:
+    - name: "generate-response"
+      type: "llm"
+      action:
+        query: "$input.query"
+        history: "$input.history"
+        temperature: "$input.temperature"
+        systemPrompt: "$input.systemPrompt"
+        result: "llmResult"
+
+    - name: "deliver-response"
+      type: "output-generator"
+      action:
+        type: "generate"
+        output:
+          response: "$llmResult.response"
+          timestamp: "$llmResult.timestamp"
+          error: "$llmResult.error"
+
+output:
+  schema:
+    response: "$llmResult.response"
+    timestamp: "$llmResult.timestamp"
+    error: "$llmResult.error"

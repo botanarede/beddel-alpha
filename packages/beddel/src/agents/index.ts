@@ -19,6 +19,7 @@ export { geminiVectorizeMetadata } from './gemini-vectorize';
 export { chromadbMetadata } from './chromadb';
 export { gitmcpMetadata } from './gitmcp';
 export { ragMetadata } from './rag';
+export { llmMetadata } from './llm';
 export { chatMetadata } from './chat';
 
 // Schema exports (client-safe)
@@ -30,6 +31,7 @@ export { GeminiVectorizeInputSchema, GeminiVectorizeOutputSchema } from './gemin
 export { ChromaDBInputSchema, ChromaDBOutputSchema } from './chromadb';
 export { GitMcpInputSchema, GitMcpOutputSchema } from './gitmcp';
 export { RagInputSchema, RagOutputSchema } from './rag';
+export { LlmInputSchema, LlmOutputSchema } from './llm';
 export { ChatInputSchema, ChatOutputSchema } from './chat';
 
 // Type exports (client-safe)
@@ -41,6 +43,7 @@ export type { GeminiVectorizeInput, GeminiVectorizeOutput, VectorizeHandlerParam
 export type { ChromaDBInput, ChromaDBOutput, ChromaDBHandlerParams, ChromaDBHandlerResult, ChromaDBSearchResult } from './chromadb';
 export type { GitMcpInput, GitMcpOutput, GitMcpHandlerParams, GitMcpHandlerResult } from './gitmcp';
 export type { RagInput, RagOutput, RagHandlerParams, RagHandlerResult, ConversationMessage } from './rag';
+export type { LlmInput, LlmOutput, LlmHandlerParams, LlmHandlerResult } from './llm';
 export type { ChatInput, ChatOutput, ChatHandlerParams, ChatHandlerResult } from './chat';
 
 /**
@@ -54,6 +57,7 @@ export const allAgentMetadata = [
   { id: 'gemini-vectorize', name: 'Gemini Vectorize Agent', description: "Generates text embeddings using Google's Gemini text-embedding-004 model", category: 'ai-service', route: '/agents/gemini-vectorize' },
   { id: 'chromadb', name: 'ChromaDB Agent', description: 'Vector storage and retrieval using ChromaDB. Supports local and cloud deployments.', category: 'database', route: '/agents/chromadb' },
   { id: 'gitmcp', name: 'GitMCP Documentation Agent', description: 'Fetches and chunks GitHub repository documentation via gitmcp.io MCP servers', category: 'integration', route: '/agents/gitmcp' },
-  { id: 'rag', name: 'RAG Intelligence Agent', description: 'Generates natural language answers based on provided context using Gemini', category: 'intelligence', route: '/agents/rag' },
-  { id: 'chat', name: 'Q&A Context Chat Agent', description: 'Orchestrates RAG pipeline: vectorization, storage, retrieval and answer generation', category: 'chat', route: '/agents/chat' },
+  { id: 'rag', name: 'RAG Intelligence Agent', description: 'Generates natural language answers based on provided document context using Gemini', category: 'intelligence', route: '/agents/rag' },
+  { id: 'llm', name: 'LLM Chat Agent', description: 'Direct LLM interaction with conversation history support (non-RAG)', category: 'intelligence', route: '/agents/llm' },
+  { id: 'chat', name: 'Q&A Context Chat Agent', description: 'Orchestrates RAG pipeline or direct LLM chat based on mode selection', category: 'chat', route: '/agents/chat' },
 ] as const;

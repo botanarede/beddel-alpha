@@ -220,6 +220,8 @@ export class AgentRegistry {
       this.registerGitMcpAgent();
       // Register RAG Agent
       this.registerRagAgent();
+      // Register LLM Agent
+      this.registerLlmAgent();
       // Register Chat Agent (Orchestrator)
       this.registerChatAgent();
     } catch (error) {
@@ -423,6 +425,30 @@ export class AgentRegistry {
   }
 
   /**
+   * Register LLM Agent
+   */
+  private registerLlmAgent(): void {
+    try {
+      const yamlPath = this.resolveAgentPath("llm/llm.yaml");
+      const yamlContent = readFileSync(yamlPath, "utf-8");
+      const agent = this.parseAgentYaml(yamlContent);
+
+      this.registerAgent({
+        id: agent.agent.id,
+        name: "llm.execute",
+        description: agent.metadata.description,
+        protocol: agent.agent.protocol,
+        route: agent.metadata.route || "/agents/llm",
+        requiredProps: ["gemini_api_key"],
+        yamlContent,
+      });
+    } catch (error) {
+      console.error("Failed to register LLM Agent:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Register Chat Agent (Orchestrator)
    */
   private registerChatAgent(): void {
@@ -519,11 +545,18 @@ export class AgentRegistry {
 
   /**
    * Resolve agent asset path when running in bundled runtimes
+   * Handles both source (src/agents/) and dist (dist/agents/) paths
    */
   private resolveAgentPath(filename: string): string {
     const candidatePaths = [
-      join(__dirname, filename),
+      // From registry folder, go up one level to agents folder
+      join(__dirname, "..", filename),
+      // Direct path from src/agents
       join(process.cwd(), "packages", "beddel", "src", "agents", filename),
+      // Direct path from dist/agents (for built package)
+      join(process.cwd(), "packages", "beddel", "dist", "agents", filename),
+      // When running from node_modules
+      join(__dirname, "..", "..", "agents", filename),
     ];
 
     for (const path of candidatePaths) {

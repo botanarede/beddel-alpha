@@ -23,8 +23,13 @@ export {
   executeChromaDBHandler,
   executeGitMcpHandler,
   executeRagHandler,
+  executeLlmHandler,
   executeChatHandler,
 } from './workflowExecutor';
+
+// LLM Provider Factory exports
+export { LLMProviderFactory, extractProviderConfig } from './llmProviderFactory';
+export type { LLMProviderType, LLMProviderConfig } from './llmProviderFactory';
 
 // Schema compiler exports
 export { DeclarativeSchemaCompiler, DeclarativeSchemaValidationError } from './schemaCompiler';

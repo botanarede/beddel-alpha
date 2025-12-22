@@ -53,7 +53,7 @@ This document outlines the architecture for the Beddel declarative agent runtime
 │   │   │  │           Declarative Interpreter                   │ │ │  │
 │   │   │  │                                                     │ │ │  │
 │   │   │  │  • YAML Parser (FAILSAFE)  • Schema Validation      │ │ │  │
-│   │   │  │  • Workflow Executor       • Genkit Integration     │ │ │  │
+│   │   │  │  • Workflow Executor       • LLM Provider Factory   │ │ │  │
 │   │   │  └─────────────────────────────────────────────────────┘ │ │  │
 │   │   │                          │                                │ │  │
 │   │   │                          ▼                                │ │  │
@@ -236,6 +236,11 @@ Application Root/
 - **Cloud Firestore** - NoSQL database (server-side access only)
 - **Next.js API Routes** - Backend logic (`/api/*`)
 
+### AI/LLM Integration
+- **Vercel AI SDK** (`ai` + `@ai-sdk/google`) - Multi-provider LLM integration with streaming support
+- **Google Gemini** - Default LLM provider (text generation, embeddings, image generation)
+- **LLMProviderFactory** - Centralized provider configuration and management
+
 ### Key Dependencies
 
 | Package | Version | Security Score | Purpose |
@@ -243,6 +248,8 @@ Application Root/
 | `js-yaml` | 4.1.0+ | 9.1/10 | Secure YAML parsing with FAILSAFE schema |
 | `isolated-vm` | 6.0.2 | 9.3/10 | Enterprise-grade V8 isolate sandboxing |
 | `zod` | Latest | N/A | Runtime schema validation |
+| `ai` | Latest | N/A | Vercel AI SDK for LLM integration |
+| `@ai-sdk/google` | Latest | N/A | Google Gemini provider for Vercel AI SDK |
 
 ---
 
@@ -283,9 +290,16 @@ class DeclarativeAgentInterpreter {
 
 **Supported Workflow Types**:
 - `output-generator` - Format output response
-- `genkit-joke` - Generate text via Gemini Flash
-- `genkit-translation` - Translate text via Gemini Flash
-- `genkit-image` - Generate images via Gemini Flash
+- `joke` - Generate text via LLM (preferred)
+- `translation` - Translate text via LLM (preferred)
+- `image` - Generate images via LLM (preferred)
+- `vectorize` - Generate embeddings via LLM (preferred)
+
+**Legacy Workflow Types** (deprecated, will be removed in v1.0):
+- `genkit-joke` → use `joke`
+- `genkit-translation` → use `translation`
+- `genkit-image` → use `image`
+- `gemini-vectorize` → use `vectorize`
 
 ### 3. Agent Registry
 

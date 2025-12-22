@@ -9,8 +9,8 @@ Beddel Alpha is a complete demonstration of the **real Beddel runtime** executin
 - **Real Agent Execution**: Agents declared in YAML execute through the Beddel runtime
 - **GraphQL Integration**: Execute agents via `/api/graphql` endpoint
 - **Custom Agents**: Create your own agents in the `/agents` directory
-- **Built-in Agents**: Joker, Translator, and Image Generator ready to use
-- **Genkit Integration**: Powered by Google Gemini Flash
+- **Built-in Agents**: Joker, Translator, Image Generator, RAG, and Chat ready to use
+- **LLM Integration**: Powered by Vercel AI SDK with Google Gemini (extensible to other providers)
 
 ---
 
@@ -436,12 +436,23 @@ logic:
 
 ### Workflow Types
 
-| Type | Description | Action Fields |
-|------|-------------|---------------|
-| `genkit-joke` | Text generation | `prompt`, `result` |
-| `genkit-translation` | Translation | `result` |
-| `genkit-image` | Image generation | `promptTemplate`, `result` |
-| `output-generator` | Format output | `output` |
+| Type | Description | Action Fields | Status |
+|------|-------------|---------------|--------|
+| `joke` | Text generation | `prompt`, `result` | **Preferred** |
+| `translation` | Translation | `result` | **Preferred** |
+| `image` | Image generation | `promptTemplate`, `result` | **Preferred** |
+| `vectorize` | Text embeddings | `text`, `texts`, `result` | **Preferred** |
+| `output-generator` | Format output | `output` | Active |
+| `mcp-tool` | MCP server tools | `server_url`, `tool_name` | Active |
+| `chromadb` | Vector storage | `action`, `collection_name` | Active |
+| `rag` | RAG generation | `query`, `context` | Active |
+| `chat` | Chat orchestration | `messages`, `query` | Active |
+| `genkit-joke` | **DEPRECATED** | Use `joke` | Deprecated |
+| `genkit-translation` | **DEPRECATED** | Use `translation` | Deprecated |
+| `genkit-image` | **DEPRECATED** | Use `image` | Deprecated |
+| `gemini-vectorize` | **DEPRECATED** | Use `vectorize` | Deprecated |
+
+> ⚠️ **Deprecation Notice**: Step types prefixed with `genkit-` and `gemini-` are deprecated. Use the preferred names instead. Legacy names will be removed in v1.0.
 
 ---
 
@@ -472,11 +483,12 @@ logic:
 
 | Feature | Status |
 |---------|--------|
-| Built-in Agents | ✅ Joker, Translator, Image |
+| Built-in Agents | ✅ Joker, Translator, Image, RAG, Chat |
 | Custom Agents | ✅ Auto-discovered from `/agents` |
 | GraphQL API | ✅ `/api/graphql` |
 | Schema Validation | ✅ Zod-based |
-| Genkit Integration | ✅ Gemini Flash |
+| LLM Integration | ✅ Vercel AI SDK (Google Gemini) |
+| Multi-Provider Support | 🔜 OpenAI, Anthropic (via LLMProviderFactory) |
 
 ---
 

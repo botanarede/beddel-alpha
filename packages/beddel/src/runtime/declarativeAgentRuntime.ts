@@ -239,18 +239,23 @@ export class DeclarativeAgentInterpreter {
     switch (step.type) {
       case 'output-generator':
         return this.executeOutputGenerator(step, variables, options);
+      // Preferred step types
+      case 'joke':
       case 'genkit-joke':
-        return this.executeGenkitJoke(step, variables, options);
+        return this.executeJoke(step, variables, options);
+      case 'translation':
       case 'genkit-translation':
-        return this.executeGenkitTranslation(step, variables, options);
+        return this.executeTranslation(step, variables, options);
+      case 'image':
       case 'genkit-image':
-        return this.executeGenkitImage(step, variables, options);
+        return this.executeImage(step, variables, options);
+      case 'vectorize':
+      case 'gemini-vectorize':
+        return this.executeVectorize(step, variables, options);
       case 'custom-action':
         return this.executeCustomAction(step, variables, options);
       case 'mcp-tool':
         return this.executeMcpTool(step, variables, options);
-      case 'gemini-vectorize':
-        return this.executeGeminiVectorize(step, variables, options);
       case 'chromadb':
         return this.executeChromaDB(step, variables, options);
       case 'gitmcp':
@@ -309,7 +314,7 @@ export class DeclarativeAgentInterpreter {
   // Delegated Handlers - Using extracted agent handlers
   // ============================================================================
 
-  private async executeGenkitJoke(
+  private async executeJoke(
     step: any,
     variables: Map<string, any>,
     options: YamlAgentInterpreterOptions
@@ -337,7 +342,7 @@ export class DeclarativeAgentInterpreter {
     return result;
   }
 
-  private async executeGenkitTranslation(
+  private async executeTranslation(
     step: any,
     variables: Map<string, any>,
     options: YamlAgentInterpreterOptions
@@ -369,7 +374,7 @@ export class DeclarativeAgentInterpreter {
     return result;
   }
 
-  private async executeGenkitImage(
+  private async executeImage(
     step: any,
     variables: Map<string, any>,
     options: YamlAgentInterpreterOptions
@@ -454,7 +459,7 @@ export class DeclarativeAgentInterpreter {
     return result;
   }
 
-  private async executeGeminiVectorize(
+  private async executeVectorize(
     step: any,
     variables: Map<string, any>,
     options: YamlAgentInterpreterOptions

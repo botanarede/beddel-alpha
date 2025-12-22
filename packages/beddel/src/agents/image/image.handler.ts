@@ -2,27 +2,30 @@ import 'server-only';
 
 /**
  * Image Agent Handler - Server-only execution logic
- * Generates images using Gemini Flash with curated styles
+ * Generates images using LLM providers (Google Gemini Imagen by default)
  */
 
 import { experimental_generateImage } from 'ai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { extractProviderConfig } from '../../runtime/llmProviderFactory';
 import type { ExecutionContext } from '../../types/executionContext';
 import type { ImageHandlerParams, ImageHandlerResult } from './image.types';
 
 const GEMINI_IMAGE_MODEL = 'imagen-4.0-fast-generate-001';
 
 /**
- * Execute image generation using Gemini
+ * Execute image generation using configured provider
  */
 export async function executeImageHandler(
   params: ImageHandlerParams,
   props: Record<string, string>,
   context: ExecutionContext
 ): Promise<ImageHandlerResult> {
-  const apiKey = props?.gemini_api_key?.trim();
-  if (!apiKey) {
-    throw new Error('Missing required prop: gemini_api_key');
+  const providerConfig = extractProviderConfig(props, 'google');
+  
+  // Currently only Google supports image generation via Vercel AI SDK
+  if (providerConfig.provider !== 'google') {
+    throw new Error(`Image generation is currently only supported with Google provider, got: ${providerConfig.provider}`);
   }
 
   const description = params.description?.trim();
@@ -47,7 +50,7 @@ export async function executeImageHandler(
     .replace(/{{style}}/g, style)
     .trim();
 
-  const google = createGoogleGenerativeAI({ apiKey });
+  const google = createGoogleGenerativeAI({ apiKey: providerConfig.apiKey });
   const model = google.image(GEMINI_IMAGE_MODEL);
   const startTime = Date.now();
 
@@ -74,6 +77,7 @@ export async function executeImageHandler(
     prompt_used: prompt,
     metadata: {
       model_used: GEMINI_IMAGE_MODEL,
+      provider: providerConfig.provider,
       processing_time: Date.now() - startTime,
       style,
       resolution,

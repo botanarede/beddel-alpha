@@ -2,35 +2,29 @@ import 'server-only';
 
 /**
  * Joker Agent Handler - Server-only execution logic
- * Generates jokes using Gemini Flash
+ * Generates jokes using LLM providers (Google Gemini by default)
  */
 
 import { generateText } from 'ai';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { LLMProviderFactory, extractProviderConfig } from '../../runtime/llmProviderFactory';
 import type { ExecutionContext } from '../../types/executionContext';
 import type { JokeHandlerParams, JokeHandlerResult } from './joker.types';
 
-const GEMINI_MODEL = 'models/gemini-2.5-flash';
-
 /**
- * Execute joke generation using Gemini Flash
+ * Execute joke generation using configured LLM provider
  */
 export async function executeJokeHandler(
   params: JokeHandlerParams,
   props: Record<string, string>,
   context: ExecutionContext
 ): Promise<JokeHandlerResult> {
-  const apiKey = props?.gemini_api_key?.trim();
-  if (!apiKey) {
-    throw new Error('Missing required prop: gemini_api_key');
-  }
+  const providerConfig = extractProviderConfig(props, 'google');
+  const model = LLMProviderFactory.createLanguageModel(providerConfig);
 
   const prompt = params.prompt?.trim() || 'Tell a short and original joke that works for any audience.';
   const temperature = params.temperature ?? 0.8;
   const maxTokens = params.maxTokens;
 
-  const google = createGoogleGenerativeAI({ apiKey });
-  const model = google(GEMINI_MODEL);
   const startTime = Date.now();
 
   context.log(`[Joker] Generating joke with temperature=${temperature}`);
@@ -50,7 +44,8 @@ export async function executeJokeHandler(
   return {
     text: finalText,
     metadata: {
-      model_used: GEMINI_MODEL,
+      model_used: providerConfig.model || LLMProviderFactory.getDefaultModel(providerConfig.provider),
+      provider: providerConfig.provider,
       processing_time: Date.now() - startTime,
       temperature,
       max_tokens: maxTokens ?? null,

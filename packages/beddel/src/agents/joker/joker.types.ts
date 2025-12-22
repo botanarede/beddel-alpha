@@ -18,6 +18,7 @@ export interface JokeHandlerResult {
   text: string;
   metadata: {
     model_used: string;
+    provider: string;
     processing_time: number;
     temperature: number;
     max_tokens: number | null;

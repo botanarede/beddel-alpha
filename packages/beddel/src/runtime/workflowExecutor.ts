@@ -7,6 +7,7 @@ import 'server-only';
 
 import type { ExecutionContext } from '../types/executionContext';
 import type { WorkflowStepType } from '../shared/types/agent.types';
+import { LEGACY_STEP_TYPE_MAP } from '../shared/types/agent.types';
 
 // Import handlers from each agent
 import { executeJokeHandler } from '../agents/joker/joker.handler';
@@ -17,6 +18,7 @@ import { executeVectorizeHandler } from '../agents/gemini-vectorize/gemini-vecto
 import { executeChromaDBHandler } from '../agents/chromadb/chromadb.handler';
 import { executeGitMcpHandler } from '../agents/gitmcp/gitmcp.handler';
 import { executeRagHandler } from '../agents/rag/rag.handler';
+import { executeLlmHandler } from '../agents/llm/llm.handler';
 import { executeChatHandler } from '../agents/chat/chat.handler';
 
 /**
@@ -30,10 +32,9 @@ type HandlerFunction = (
 
 /**
  * Map of workflow step types to their handlers
- * Maps both legacy (Portuguese) and new (English) step type names
+ * Preferred step type names only - legacy names resolved via LEGACY_STEP_TYPE_MAP
  */
 const handlerMap: Record<string, HandlerFunction> = {
-  // English step types (preferred)
   'joke': executeJokeHandler,
   'translation': executeTranslationHandler,
   'image': executeImageHandler,
@@ -42,13 +43,23 @@ const handlerMap: Record<string, HandlerFunction> = {
   'chromadb': executeChromaDBHandler,
   'gitmcp': executeGitMcpHandler,
   'rag': executeRagHandler,
+  'llm': executeLlmHandler,
   'chat': executeChatHandler,
-  // Legacy step types (for backward compatibility)
-  'genkit-joke': executeJokeHandler,
-  'genkit-translation': executeTranslationHandler,
-  'genkit-image': executeImageHandler,
-  'gemini-vectorize': executeVectorizeHandler,
 };
+
+/**
+ * Resolve step type, handling legacy names with deprecation warning
+ */
+function resolveStepType(stepType: string, context: ExecutionContext): string {
+  if (stepType in LEGACY_STEP_TYPE_MAP) {
+    const preferred = LEGACY_STEP_TYPE_MAP[stepType];
+    context.log(
+      `[DEPRECATION WARNING] Step type '${stepType}' is deprecated. Use '${preferred}' instead.`
+    );
+    return preferred;
+  }
+  return stepType;
+}
 
 /**
  * Execute a workflow step by delegating to the appropriate handler
@@ -59,7 +70,8 @@ export async function executeWorkflowStep(
   props: Record<string, string>,
   context: ExecutionContext
 ): Promise<unknown> {
-  const handler = handlerMap[stepType];
+  const resolvedType = resolveStepType(stepType, context);
+  const handler = handlerMap[resolvedType];
   if (!handler) {
     throw new Error(`Unknown workflow step type: ${stepType}`);
   }
@@ -74,10 +86,10 @@ export function getAvailableStepTypes(): string[] {
 }
 
 /**
- * Check if a step type is supported
+ * Check if a step type is supported (including legacy names)
  */
 export function isStepTypeSupported(stepType: string): boolean {
-  return stepType in handlerMap;
+  return stepType in handlerMap || stepType in LEGACY_STEP_TYPE_MAP;
 }
 
 // Export individual handlers for direct use
@@ -90,5 +102,6 @@ export {
   executeChromaDBHandler,
   executeGitMcpHandler,
   executeRagHandler,
+  executeLlmHandler,
   executeChatHandler,
 };

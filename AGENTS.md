@@ -110,15 +110,19 @@ src/agents/joker/
 | Step Type | Description | Required Props |
 |-----------|-------------|----------------|
 | `output-generator` | Returns literal or computed values | — |
-| `genkit-joke` | Generates jokes via Gemini | `gemini_api_key` |
-| `genkit-translation` | Translates text via Gemini | `gemini_api_key` |
-| `genkit-image` | Generates images via Gemini | `gemini_api_key` |
+| `joke` | Generates jokes via Gemini | `gemini_api_key` |
+| `translation` | Translates text via Gemini | `gemini_api_key` |
+| `image` | Generates images via Gemini | `gemini_api_key` |
 | `mcp-tool` | Invokes MCP server tools | — |
-| `gemini-vectorize` | Generates text embeddings | `gemini_api_key` |
+| `vectorize` | Generates text embeddings | `gemini_api_key` |
 | `chromadb` | Vector storage and retrieval | — |
 | `gitmcp` | Fetches GitHub documentation | — |
-| `rag` | RAG answer generation | `gemini_api_key` |
+| `rag` | RAG answer generation (requires documents) | `gemini_api_key` |
+| `llm` | Direct LLM chat (no documents) | `gemini_api_key` |
+| `chat` | Orchestrates RAG or LLM based on mode | `gemini_api_key` |
 | `custom-action` | Executes custom TypeScript functions | Varies |
+
+> **Note**: Legacy step type names (`genkit-joke`, `genkit-translation`, `genkit-image`, `gemini-vectorize`) are deprecated. Use the preferred names above.
 
 ### Built-in Agents
 
@@ -131,8 +135,36 @@ src/agents/joker/
 | `gemini-vectorize/gemini-vectorize.yaml` | `gemini-vectorize.execute` | `gemini_api_key` | Text embeddings |
 | `chromadb/chromadb.yaml` | `chromadb.execute` | — | Vector storage/retrieval |
 | `gitmcp/gitmcp.yaml` | `gitmcp.execute` | — | GitHub documentation fetching |
-| `rag/rag.yaml` | `rag.execute` | `gemini_api_key` | RAG answer generation |
-| `chat/chat.yaml` | `chat.execute` | `gemini_api_key` | RAG pipeline orchestrator |
+| `rag/rag.yaml` | `rag.execute` | `gemini_api_key` | RAG answer generation (requires document context) |
+| `llm/llm.yaml` | `llm.execute` | `gemini_api_key` | Direct LLM chat with conversation history |
+| `chat/chat.yaml` | `chat.execute` | `gemini_api_key` | Chat orchestrator (RAG or direct LLM) |
+
+### Agent Architecture
+
+The chat system follows a clear separation of concerns:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        CHAT AGENT (Orchestrator)                 │
+│  - Receives mode: 'simple' | 'rag'                              │
+│  - If 'simple': calls LLM agent directly                        │
+│  - If 'rag': orchestrates vectorize → chromadb → RAG            │
+└─────────────────────────────────────────────────────────────────┘
+          │                                    │
+          │ mode='simple'                      │ mode='rag'
+          ▼                                    ▼
+┌─────────────────────┐          ┌─────────────────────────────────┐
+│     LLM AGENT       │          │  VECTORIZE → CHROMADB → RAG     │
+│  - Direct LLM call  │          │                                 │
+│  - Conversation     │          │  RAG AGENT:                     │
+│    history support  │          │  - ALWAYS requires documents    │
+│  - No documents     │          │  - Pure RAG functionality       │
+└─────────────────────┘          └─────────────────────────────────┘
+```
+
+- **LLM Agent**: Direct LLM interaction without document context
+- **RAG Agent**: Retrieval-Augmented Generation (always requires documents)
+- **Chat Agent**: Orchestrator that routes to LLM or RAG based on mode
 
 ### Custom Agents
 
@@ -144,7 +176,286 @@ Custom agents can be created in the application's `/agents` directory:
 
 ---
 
-## 6. Testing Instructions
+## 6. GraphQL API Integration
+
+This section explains how to create a GraphQL endpoint to expose Beddel agents in your Next.js application.
+
+### API Route Implementation
+
+Create a file at `src/app/api/graphql/route.ts`:
+
+```typescript
+import { NextRequest, NextResponse } from "next/server";
+import { executeChatHandler } from "beddel/agents/chat/chat.handler";
+import { executeLlmHandler } from "beddel/agents/llm/llm.handler";
+import { executeRagHandler } from "beddel/agents/rag/rag.handler";
+import type { ExecutionContext } from "beddel";
+import type { ChatHandlerParams } from "beddel/agents/chat";
+
+interface GraphQLRequest {
+  query: string;
+  variables?: {
+    input?: ChatHandlerParams;
+  };
+}
+
+interface ExecuteMethodResult {
+  success: boolean;
+  data?: unknown;
+  error?: string | null;
+  executionTime?: number;
+}
+
+// Create execution context for the handler
+function createExecutionContext(): ExecutionContext {
+  const context: ExecutionContext = {
+    logs: [],
+    status: "running",
+    output: null,
+    error: undefined,
+    log: (message: string) => {
+      context.logs.push(`[${new Date().toISOString()}] ${message}`);
+      console.log(message);
+    },
+    setOutput: (data: unknown) => {
+      context.output = data;
+      context.status = "success";
+    },
+    setError: (err: string) => {
+      context.error = err;
+      context.status = "error";
+    },
+  };
+  return context;
+}
+
+// Get props from environment variables
+function getPropsFromEnv(): Record<string, string> {
+  return {
+    gemini_api_key: process.env.GEMINI_API_KEY || "",
+    chromadb_tenant: process.env.CHROMADB_TENANT || "",
+    chromadb_api_key: process.env.CHROMADB_API_KEY || "",
+    chromadb_database: process.env.CHROMADB_DATABASE || "",
+  };
+}
+
+export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+
+  try {
+    const body: GraphQLRequest = await request.json();
+    const { variables } = body;
+    const params = variables?.input;
+
+    if (!params || !params.messages) {
+      return NextResponse.json(
+        { errors: [{ message: "Missing required input.messages parameter" }] },
+        { status: 400 }
+      );
+    }
+
+    const context = createExecutionContext();
+    const props = getPropsFromEnv();
+
+    // Execute chat handler (orchestrates LLM or RAG based on mode)
+    const result = await executeChatHandler(params, props, context);
+
+    const executeMethodResult: ExecuteMethodResult = {
+      success: true,
+      data: result,
+      error: null,
+      executionTime: Date.now() - startTime,
+    };
+
+    return NextResponse.json({
+      data: { executeMethod: executeMethodResult },
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({
+      data: {
+        executeMethod: {
+          success: false,
+          data: null,
+          error: message,
+          executionTime: Date.now() - startTime,
+        },
+      },
+    });
+  }
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    },
+  });
+}
+```
+
+### Client-Side API Helper
+
+Create a file at `src/lib/chat-api.ts`:
+
+```typescript
+import type { ConversationMessage, ChatHandlerResult, ExecutionStep } from "beddel";
+
+export type { ConversationMessage as Message, ChatHandlerResult, ExecutionStep };
+
+export interface ApiResponse {
+  success: boolean;
+  data?: ChatHandlerResult;
+  error?: string;
+  executionTime?: number;
+}
+
+const GRAPHQL_QUERY = `
+mutation ExecuteChat($input: JSON!) {
+  executeMethod(
+    methodName: "chat.execute",
+    params: $input,
+    props: {}
+  ) {
+    success
+    data
+    error
+    executionTime
+  }
+}
+`;
+
+export type ChatMode = 'rag' | 'simple';
+
+export async function sendChatMessage(
+  messages: ConversationMessage[],
+  mode: ChatMode = 'rag'
+): Promise<ApiResponse> {
+  try {
+    const response = await fetch("/api/graphql", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query: GRAPHQL_QUERY,
+        variables: { input: { messages, mode } },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return {
+        success: false,
+        error: errorData.error || `HTTP error! status: ${response.status}`,
+      };
+    }
+
+    const json = await response.json();
+
+    if (json.errors) {
+      return { success: false, error: json.errors[0]?.message || "GraphQL Error" };
+    }
+
+    const result = json.data?.executeMethod;
+    if (!result) {
+      return { success: false, error: "Invalid GraphQL response structure" };
+    }
+
+    return {
+      success: result.success,
+      data: result.data as ChatHandlerResult,
+      error: result.error,
+      executionTime: result.executionTime,
+    };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to send message";
+    return { success: false, error: message };
+  }
+}
+```
+
+### Usage Example
+
+```typescript
+import { sendChatMessage, type Message } from "@/lib/chat-api";
+
+// Simple mode: Direct LLM chat (no document context)
+const simpleResponse = await sendChatMessage(
+  [{ role: "user", content: "Hello, how are you?" }],
+  "simple"
+);
+
+// RAG mode: Knowledge-based answers (default)
+const ragResponse = await sendChatMessage(
+  [{ role: "user", content: "What is the Beddel protocol?" }],
+  "rag"
+);
+
+// With conversation history
+const messages: Message[] = [
+  { role: "user", content: "What is TypeScript?" },
+  { role: "assistant", content: "TypeScript is a typed superset of JavaScript..." },
+  { role: "user", content: "How do I use interfaces?" },
+];
+const response = await sendChatMessage(messages, "simple");
+```
+
+### Environment Variables
+
+Configure the following environment variables in your `.env.local`:
+
+```bash
+# Required for LLM/RAG functionality
+GEMINI_API_KEY=your_gemini_api_key
+
+# Optional: ChromaDB for RAG mode
+CHROMADB_TENANT=your_tenant
+CHROMADB_API_KEY=your_chromadb_key
+CHROMADB_DATABASE=your_database
+```
+
+### GraphQL Schema Reference
+
+The Beddel GraphQL API uses the following schema:
+
+```graphql
+type Query {
+  ping: String!
+}
+
+type Mutation {
+  executeMethod(
+    methodName: String!
+    params: JSON!
+    props: JSON!
+  ): ExecutionResult!
+}
+
+type ExecutionResult {
+  success: Boolean!
+  data: JSON
+  error: String
+  executionTime: Int!
+}
+
+scalar JSON
+```
+
+### Available Methods
+
+| Method Name | Description | Mode |
+|-------------|-------------|------|
+| `chat.execute` | Chat orchestrator (recommended) | `simple` or `rag` |
+| `llm.execute` | Direct LLM chat | — |
+| `rag.execute` | RAG with documents | — |
+| `joker.execute` | Joke generation | — |
+| `translator.execute` | Text translation | — |
+
+---
+
+## 7. Testing Instructions
 
 ### Test Commands
 
@@ -166,7 +477,7 @@ node packages/beddel/tests/test-runtime-security.js
 
 ---
 
-## 7. Boundaries and Guardrails
+## 8. Boundaries and Guardrails
 
 ### What Agents SHOULD Do
 
@@ -192,7 +503,7 @@ node packages/beddel/tests/test-runtime-security.js
 
 ---
 
-## 8. Documentation Sync Duties
+## 9. Documentation Sync Duties
 
 When making changes, ensure documentation stays synchronized:
 
@@ -206,7 +517,7 @@ When making changes, ensure documentation stays synchronized:
 
 ---
 
-## 9. Contribution Checklist
+## 10. Contribution Checklist
 
 Before submitting changes:
 
@@ -220,7 +531,7 @@ Before submitting changes:
 
 ---
 
-## 10. Handling Uncertainty
+## 11. Handling Uncertainty
 
 When encountering ambiguous requirements or edge cases:
 
@@ -231,7 +542,7 @@ When encountering ambiguous requirements or edge cases:
 
 ---
 
-## 11. Git Workflow
+## 12. Git Workflow
 
 ### Commit Message Format
 

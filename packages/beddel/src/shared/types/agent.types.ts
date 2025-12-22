@@ -44,10 +44,18 @@ export interface ExecutionStep {
 
 /**
  * Workflow step types supported by the runtime
- * Includes both English (preferred) and legacy (Portuguese) names
+ *
+ * PREFERRED: Use the English step type names (joke, translation, image, vectorize)
+ *
+ * DEPRECATED: The following legacy names are supported for backward compatibility
+ * but will be removed in a future major version:
+ * - genkit-joke → use 'joke'
+ * - genkit-translation → use 'translation'
+ * - genkit-image → use 'image'
+ * - gemini-vectorize → use 'vectorize'
  */
 export type WorkflowStepType =
-  // English step types (preferred)
+  // Preferred step types (use these)
   | 'joke'
   | 'translation'
   | 'image'
@@ -56,15 +64,27 @@ export type WorkflowStepType =
   | 'chromadb'
   | 'gitmcp'
   | 'rag'
+  | 'llm'
   | 'chat'
   | 'output-generator'
   | 'builtin-agent'
   | 'custom-action'
-  // Legacy step types (backward compatibility)
+  // Legacy step types (deprecated - will be removed in v1.0)
   | 'genkit-joke'
   | 'genkit-translation'
   | 'genkit-image'
   | 'gemini-vectorize';
+
+/**
+ * Maps legacy step type names to their preferred equivalents
+ * @deprecated Use preferred step type names directly
+ */
+export const LEGACY_STEP_TYPE_MAP: Record<string, WorkflowStepType> = {
+  'genkit-joke': 'joke',
+  'genkit-translation': 'translation',
+  'genkit-image': 'image',
+  'gemini-vectorize': 'vectorize',
+};
 
 /**
  * Agent categories for organization

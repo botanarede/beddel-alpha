@@ -164,5 +164,13 @@ export { chatMetadata } from "./agents/chat";
 // RAG types (client-safe)
 export type { ConversationMessage } from "./agents/rag/rag.types";
 
+// LLM agent exports (client-safe)
+export type {
+  LlmHandlerParams,
+  LlmHandlerResult,
+  LlmMetadata,
+} from "./agents/llm/llm.types";
+export { llmMetadata } from "./agents/llm";
+
 // Server/runtime exports
 export * as Server from "./server";

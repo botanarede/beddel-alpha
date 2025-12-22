@@ -1,5 +1,40 @@
 # Changelog
 
+## [0.3.0] - 2025-12-22
+
+### Added
+- **New LLM Agent**: Direct LLM interaction without document context
+  - `llm.execute` method for simple chat with conversation history
+  - `llm` workflow step type for declarative workflows
+  - Full TypeScript types: `LlmHandlerParams`, `LlmHandlerResult`, `LlmMetadata`
+  - Zod schemas: `LlmInputSchema`, `LlmOutputSchema`
+
+### Changed
+- **Refactored Agent Architecture**: Fixed responsibility leak between chat and rag agents
+  - RAG agent now ALWAYS requires document context (removed `mode` parameter)
+  - Chat agent uses LLM agent for `mode='simple'` (previously used RAG with mode)
+  - Clear separation: LLM = direct chat, RAG = document-augmented generation
+- **Updated Documentation**: 
+  - Added GraphQL API Integration section with complete examples
+  - Updated agent architecture diagram
+  - Added LLM agent to built-in agents catalog
+  - Updated workflow step types table
+
+### Removed
+- `RagMode` type from RAG agent (was semantically incorrect)
+- `buildSimpleChatPrompt` function from RAG handler (moved to LLM agent)
+- `mode` parameter from RAG agent (RAG always requires documents)
+
+### Migration Guide
+If you were using `rag.execute` with `mode: 'simple'`:
+```typescript
+// Before (v0.2.x)
+await executeRagHandler({ query, history, mode: 'simple' }, props, context);
+
+// After (v0.3.0)
+await executeLlmHandler({ query, history }, props, context);
+```
+
 ## [0.2.3] - 2025-12-20
 
 ### Added

@@ -19,6 +19,7 @@ export interface TranslationHandlerResult {
   translated_text: string;
   metadata: {
     model_used: string;
+    provider: string;
     processing_time: number;
     confidence: number;
     supported_languages: string[];

@@ -27,6 +27,7 @@ export interface ImageHandlerResult {
   prompt_used: string;
   metadata: {
     model_used: string;
+    provider: string;
     processing_time: number;
     style: string;
     resolution: string;

@@ -1,5 +1,6 @@
 /**
  * RAG Agent Types - Shared between client and server
+ * RAG = Retrieval-Augmented Generation (always requires document context)
  */
 
 /**
@@ -11,21 +12,14 @@ export interface ConversationMessage {
 }
 
 /**
- * RAG execution mode
- * - 'rag': Uses provided documents/context for answer generation
- * - 'simple': Direct LLM chat without document context
- */
-export type RagMode = 'rag' | 'simple';
-
-/**
  * Parameters for RAG answer generation
+ * Note: context or documents is REQUIRED - RAG always needs document context
  */
 export interface RagHandlerParams {
   query: string;
   context?: string;
   documents?: string;
   history?: ConversationMessage[];
-  mode?: RagMode;
 }
 
 /**
