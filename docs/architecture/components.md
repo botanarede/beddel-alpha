@@ -61,10 +61,17 @@
 
 **Key Interfaces:**
 - `llmPrimitive(config: StepConfig, context: ExecutionContext): Promise<Response | object>`
+- `mapTools(toolDefinitions): ToolSet` - Maps YAML tool definitions to SDK tools
+- `registerCallback(name, fn)` - Register lifecycle callbacks
 
 **Dependencies:** `ai`, `@ai-sdk/google`, `toolRegistry`, `callbackRegistry`
 
-**Technology Stack:** Vercel AI SDK `streamText` and `generateText` with `onFinish`/`onError` callbacks.
+**Technology Stack (AI SDK v6):**
+- `streamText()` for streaming mode → `result.toTextStreamResponse()`
+- `generateText()` for blocking mode → `{ text, usage }`
+- `dynamicTool()` for registry-based tool creation
+- `stopWhen: stepCountIs(5)` for multi-step tool loops
+- `onFinish` / `onError` lifecycle callbacks
 
 ---
 

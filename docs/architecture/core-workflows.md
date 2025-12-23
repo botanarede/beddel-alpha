@@ -50,9 +50,9 @@ sequenceDiagram
     participant Tools as Tool Registry
     participant Calc as calculator
 
-    LLM->>SDK: streamText({ maxSteps: 5, tools })
+    LLM->>SDK: streamText({ stopWhen: stepCountIs(5), tools })
     
-    loop Up to maxSteps
+    loop Until stopWhen condition met
         SDK->>SDK: LLM generates response
         
         alt Tool call requested

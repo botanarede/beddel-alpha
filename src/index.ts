@@ -14,7 +14,11 @@ export { WorkflowExecutor } from './core/workflow';
 export { resolveVariables } from './core/variable-resolver';
 
 // Primitives registry (for custom handler registration)
-export { handlerRegistry } from './primitives';
+export { handlerRegistry, registerPrimitive } from './primitives';
+
+// Tools registry (for custom tool registration)
+export { toolRegistry, registerTool } from './tools';
+export type { ToolImplementation } from './tools';
 
 // Types (re-exported for convenience, also available via beddel/client)
 export type {
@@ -25,3 +29,4 @@ export type {
     ExecutionContext,
     PrimitiveHandler,
 } from './types';
+

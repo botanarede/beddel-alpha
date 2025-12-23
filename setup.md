@@ -146,23 +146,23 @@ type PrimitiveHandler = (
     - [ ] Each tool entry contains `{ description, parameters (Zod schema), execute (function) }`
     - [ ] MVP ships with sample tools: `calculator`, `getCurrentTime`
 
-- [ ] **Task 2.2: LLM Primitive** (`src/primitives/llm.ts`)
-  - [ ] **Main Feature**: Dual Mode support via `config.stream: boolean`
-  - [ ] Stream Mode: Uses `streamText` → returns `result.toDataStreamResponse()`
-  - [ ] Block Mode: Uses `generateText` → returns JSON object
-  - [ ] Integration: Map `config.messages` (Beddel format) to `CoreMessage[]` (SDK format)
-  - [ ] **Tool Mapping**: Implement `mapTools()` to bridge YAML definitions → Vercel SDK `tools` object
-    - [ ] Lookup tool implementation from `toolRegistry` by name
-    - [ ] Allow YAML to override `description` if provided
+- [x] **Task 2.2: LLM Primitive** (`src/primitives/llm.ts`)
+  - [x] **Main Feature**: Dual Mode support via `config.stream: boolean`
+  - [x] Stream Mode: Uses `streamText` → returns `result.toDataStreamResponse()`
+  - [x] Block Mode: Uses `generateText` → returns JSON object
+  - [x] Integration: Map `config.messages` (Beddel format) to `CoreMessage[]` (SDK format)
+  - [x] **Tool Mapping**: Implement `mapTools()` to bridge YAML definitions → Vercel SDK `tools` object
+    - [x] Lookup tool implementation from `toolRegistry` by name
+    - [x] Allow YAML to override `description` if provided
 
-- [ ] **Task 2.3: Output Primitive** (`src/primitives/output.ts`)
-  - [ ] Implement variable resolution (e.g., `$input.user.name` or `$prevStep.text`)
+- [x] **Task 2.3: Output Primitive** (`src/primitives/output.ts`)
+  - [x] Implement variable resolution (e.g., `$input.user.name` or `$prevStep.text`)
 
-- [ ] **Task 2.4: Lifecycle Hooks** (`src/primitives/llm.ts`)
-  - [ ] Implement `onFinish` callback support (executes after stream completes)
-  - [ ] Implement `onError` callback support (executes on stream error)
-  - [ ] Create `callbackRegistry: Record<string, CallbackFn>` for consumer-registered callbacks
-  - [ ] Callbacks receive `{ text, usage, totalUsage, steps }` payload
+- [x] **Task 2.4: Lifecycle Hooks** (`src/primitives/llm.ts`)
+  - [x] Implement `onFinish` callback support (executes after stream completes)
+  - [x] Implement `onError` callback support (executes on stream error)
+  - [x] Create `callbackRegistry: Record<string, CallbackFn>` for consumer-registered callbacks
+  - [x] Callbacks receive `{ text, usage, totalUsage, steps }` payload
 
 ### Phase 3: API & Integration
 
@@ -184,7 +184,7 @@ type PrimitiveHandler = (
 
 ```typescript
 // src/primitives/llm.ts
-import { streamText, generateText, tool } from 'ai';
+import { streamText, generateText, dynamicTool, stepCountIs, type ToolSet } from 'ai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { toolRegistry } from '../tools';
 
@@ -193,8 +193,8 @@ import { toolRegistry } from '../tools';
  * YAML defines intent (name, optional description override).
  * Registry provides implementation (parameters, execute).
  */
-function mapTools(toolDefinitions: Array<{ name: string; description?: string }>) {
-  const tools: Record<string, ReturnType<typeof tool>> = {};
+function mapTools(toolDefinitions: Array<{ name: string; description?: string }>): ToolSet {
+  const tools: ToolSet = {};
   
   for (const def of toolDefinitions) {
     const impl = toolRegistry[def.name];
@@ -203,10 +203,11 @@ function mapTools(toolDefinitions: Array<{ name: string; description?: string }>
       continue;
     }
     
-    tools[def.name] = tool({
+    // Use dynamicTool for flexible type handling with registry-defined tools
+    tools[def.name] = dynamicTool({
       description: def.description || impl.description, // YAML can override
-      parameters: impl.parameters,
-      execute: impl.execute,
+      inputSchema: impl.parameters,  // Note: 'parameters' renamed to 'inputSchema' in AI SDK v6
+      execute: async (args: unknown) => impl.execute(args as Record<string, unknown>),
     });
   }
   
@@ -222,17 +223,18 @@ export const llmPrimitive = async (config: any, context: any) => {
 
   if (config.stream) {
     // STREAMING MODE: Returns HTTP response directly
-    const result = await streamText({
+    const result = streamText({  // Note: No 'await' - streamText returns immediately
       model,
       messages,
       system: config.system,
-      maxSteps: config.tools ? 5 : 1, // Enables Tool Loop if tools exist
+      // AI SDK v6: Use stopWhen instead of maxSteps for multi-step tool loops
+      stopWhen: config.tools ? stepCountIs(5) : undefined,
       tools: config.tools ? mapTools(config.tools) : undefined,
       // Lifecycle hooks (Option B: direct callbacks)
-      onFinish: async ({ text, usage, response, steps, totalUsage }) => {
+      onFinish: async ({ text, finishReason, usage, response, steps, totalUsage }) => {
         if (config.onFinish) {
           const callback = callbackRegistry[config.onFinish];
-          if (callback) await callback({ text, usage, totalUsage, steps });
+          if (callback) await callback({ text, finishReason, usage, totalUsage, steps, response });
         }
       },
       onError: ({ error }) => {
@@ -245,13 +247,16 @@ export const llmPrimitive = async (config: any, context: any) => {
     });
     
     // Executor will detect this and return to client immediately
-    return result.toDataStreamResponse(); 
+    // AI SDK v6 options: toTextStreamResponse() or toUIMessageStreamResponse()
+    return result.toTextStreamResponse(); 
   } else {
     // BLOCKING MODE: Returns data for next workflow step
     const result = await generateText({
       model,
       messages,
       system: config.system,
+      // AI SDK v6: Use stopWhen for multi-step tool execution
+      stopWhen: config.tools ? stepCountIs(5) : undefined,
       tools: config.tools ? mapTools(config.tools) : undefined,
     });
     return { text: result.text, usage: result.usage };
