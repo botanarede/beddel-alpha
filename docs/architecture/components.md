@@ -48,6 +48,7 @@
 
 **Key Interfaces:**
 - `handlerRegistry: Record<string, PrimitiveHandler>`
+- `registerPrimitive(type: string, handler: PrimitiveHandler): void`
 
 **Dependencies:** `llm`, `output-generator`, `call-agent` primitives
 
@@ -62,7 +63,8 @@
 **Key Interfaces:**
 - `llmPrimitive(config: StepConfig, context: ExecutionContext): Promise<Response | object>`
 - `mapTools(toolDefinitions): ToolSet` - Maps YAML tool definitions to SDK tools
-- `registerCallback(name, fn)` - Register lifecycle callbacks
+- `registerCallback(name: string, fn: CallbackFn): void` - Register lifecycle callbacks
+- `callbackRegistry: Record<string, CallbackFn>` - Stores registered callbacks
 
 **Dependencies:** `ai`, `@ai-sdk/google`, `toolRegistry`, `callbackRegistry`
 
@@ -75,13 +77,39 @@
 
 ---
 
+### Output Primitive (`src/primitives/output.ts`)
+
+**Responsibility:** Deterministic JSON transform using variable resolution.
+
+**Key Interfaces:**
+- `outputPrimitive(config: StepConfig, context: ExecutionContext): Promise<Record<string, unknown>>`
+
+**Dependencies:** `resolveVariables`
+
+**Technology Stack:** Pure TypeScript.
+
+---
+
+### Call Agent Primitive (Placeholder)
+
+**Responsibility:** Invoke another YAML workflow as a subroutine.
+
+**Status:** 🚧 Coming Soon — currently registered as placeholder handler.
+
+---
+
 ### Tool Registry (`src/tools/index.ts`)
 
 **Responsibility:** Register and provide tool implementations for LLM primitives.
 
 **Key Interfaces:**
 - `toolRegistry: Record<string, ToolImplementation>`
+- `registerTool(name: string, implementation: ToolImplementation): void`
 - `ToolImplementation: { description, parameters (Zod), execute }`
+
+**Built-in Tools:**
+- `calculator` - Evaluate mathematical expressions
+- `getCurrentTime` - Get current ISO timestamp
 
 **Dependencies:** `zod`
 
@@ -89,10 +117,86 @@
 
 ---
 
+### Server Handler (`src/server/handler.ts`)
+
+**Responsibility:** Factory for creating Next.js API route handlers.
+
+**Key Interfaces:**
+- `createBeddelHandler(options?: BeddelHandlerOptions): (request: NextRequest) => Promise<Response>`
+- `BeddelHandlerOptions: { agentsPath?: string }`
+
+**Dependencies:** `loadYaml`, `WorkflowExecutor`, `next/server`
+
+**Technology Stack:** Next.js App Router API Routes.
+
+**Usage:**
+```typescript
+// app/api/beddel/chat/route.ts
+import { createBeddelHandler } from 'beddel/server';
+
+export const POST = createBeddelHandler({
+  agentsPath: 'src/agents'  // Default: 'src/agents'
+});
+```
+
+---
+
+## Extensibility APIs
+
+Beddel follows the **Expansion Pack Pattern** for extensibility:
+
+### `registerPrimitive(type, handler)`
+
+Add custom step types to the workflow engine.
+
+```typescript
+import { registerPrimitive } from 'beddel';
+
+registerPrimitive('http-fetch', async (config, context) => {
+  const response = await fetch(config.url);
+  return { data: await response.json() };
+});
+```
+
+### `registerTool(name, implementation)`
+
+Add custom tools for LLM function calling.
+
+```typescript
+import { registerTool } from 'beddel';
+import { z } from 'zod';
+
+registerTool('weatherLookup', {
+  description: 'Get weather for a city',
+  parameters: z.object({ city: z.string() }),
+  execute: async ({ city }) => fetchWeather(city),
+});
+```
+
+### `registerCallback(name, fn)`
+
+Add lifecycle hooks for streaming completion.
+
+```typescript
+import { registerCallback } from 'beddel';
+
+registerCallback('persistConversation', async ({ text, usage }) => {
+  await db.saveMessage(text, usage);
+});
+```
+
+---
+
 ## Component Diagram
 
 ```mermaid
 graph TB
+    subgraph "Entry Points"
+        Index["index.ts"]
+        Server["server.ts"]
+        Client["client.ts (types)"]
+    end
+    
     subgraph "Core"
         Parser["parser.ts"]
         Executor["workflow.ts"]
@@ -103,7 +207,7 @@ graph TB
         Registry["index.ts (handlerRegistry)"]
         LLMPrim["llm.ts"]
         OutputPrim["output.ts"]
-        CallAgent["call-agent.ts"]
+        CallAgent["call-agent (placeholder)"]
     end
     
     subgraph "Tools"
@@ -112,7 +216,17 @@ graph TB
         Time["getCurrentTime"]
     end
     
-    Executor --> Parser
+    subgraph "Server"
+        Handler["handler.ts"]
+    end
+    
+    Index --> Parser
+    Index --> Executor
+    Index --> Registry
+    Index --> ToolReg
+    Server --> Handler
+    Handler --> Parser
+    Handler --> Executor
     Executor --> Registry
     Executor --> VarResolver
     Registry --> LLMPrim
@@ -122,3 +236,4 @@ graph TB
     ToolReg --> Calc
     ToolReg --> Time
 ```
+

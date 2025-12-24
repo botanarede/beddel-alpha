@@ -191,7 +191,7 @@ You are implementing Task 2.2 of Beddel Protocol.
 
 3. Implement llmPrimitive():
    - Dual mode via config.stream: boolean
-   - stream: true → streamText → result.toDataStreamResponse()
+   - stream: true → streamText → result.toTextStreamResponse()
    - stream: false → generateText → { text, usage }
    - maxSteps: 5 when tools present
 
@@ -199,7 +199,7 @@ You are implementing Task 2.2 of Beddel Protocol.
 - Requires GEMINI_API_KEY environment variable
 
 **Acceptance Criteria:**
-- [ ] stream: true uses streamText and returns result.toDataStreamResponse()
+- [ ] stream: true uses streamText and returns result.toTextStreamResponse()
 - [ ] stream: false uses generateText and returns JSON object
 - [ ] config.tools maps to Vercel AI SDK tools via mapTools() function
 - [ ] maxSteps is set to 5 when tools are present
@@ -301,33 +301,25 @@ You are implementing Task 3.1 of Beddel Protocol.
 
 **Steps:**
 1. Create examples/api-route.ts (not in src/):
-   - POST handler receiving { agentId, messages }
-   - Import loadYaml and WorkflowExecutor from beddel
-   - Load YAML from src/agents/{agentId}.yaml
-   - Execute workflow
-   - Return Response or JSON
+   - POST handler using createBeddelHandler factory
+   - Import createBeddelHandler from 'beddel/server'
+   - Configure agentsPath
 
 2. Document in README that consumers copy this pattern
 
 **Code Pattern:**
 ```typescript
-export async function POST(request: NextRequest) {
-  const { agentId, messages } = await request.json();
-  const yaml = await loadYaml(`src/agents/${agentId}.yaml`);
-  const executor = new WorkflowExecutor(yaml);
-  const result = await executor.execute({ messages });
-  
-  if (result instanceof Response) {
-    return result;
-  }
-  return Response.json(result);
-}
+import { createBeddelHandler } from 'beddel/server';
+
+export const POST = createBeddelHandler({
+  agentsPath: 'src/agents' // or 'packages/beddel/examples/agents'
+});
 ```
 
 **Acceptance Criteria:**
-- [ ] POST /api/beddel/chat accepts { agentId, messages }
-- [ ] Loads YAML from src/agents/{agentId}.yaml
-- [ ] Returns streaming Response or JSON based on workflow output
+- [ ] POST /api/beddel/chat uses createBeddelHandler
+- [ ] Imports correctly from 'beddel/server'
+- [ ] Successfully delegates to WorkflowExecutor internally
 ```
 
 ---

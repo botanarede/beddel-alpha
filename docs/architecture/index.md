@@ -12,6 +12,7 @@
 - [Components](./components.md)
 - [Source Tree](./source-tree.md)
 - [Core Workflows](./core-workflows.md)
+- [API Reference](./api-reference.md)
 
 ---
 

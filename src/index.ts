@@ -12,6 +12,8 @@
 export { loadYaml } from './core/parser';
 export { WorkflowExecutor } from './core/workflow';
 export { resolveVariables } from './core/variable-resolver';
+export { createBeddelHandler } from './server/handler';
+
 
 // Primitives registry (for custom handler registration)
 export { handlerRegistry, registerPrimitive } from './primitives';
