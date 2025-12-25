@@ -35,22 +35,48 @@ export interface ToolImplementation {
  */
 export const toolRegistry: Record<string, ToolImplementation> = {
     /**
-     * Calculator tool - evaluates mathematical expressions.
+     * Calculator tool - evaluates mathematical expressions safely.
+     * 
+     * Security: Only allows numbers, operators (+, -, *, /, %, **), 
+     * parentheses, and decimal points. No function calls or variables.
      * 
      * @example
      * Input: { expression: "2 + 2 * 3" }
      * Output: { result: 8 }
      */
     calculator: {
-        description: 'Evaluate a mathematical expression',
+        description: 'Evaluate a mathematical expression (numbers and basic operators only)',
         parameters: z.object({
-            expression: z.string().describe('The math expression to evaluate'),
+            expression: z.string().describe('The math expression to evaluate (e.g., "2 + 2 * 3")'),
         }),
         execute: async ({ expression }) => {
-            // Simple eval for MVP - use math.js in production for safety
-            // We use Function constructor to avoid direct eval()
-            const result = Function(`"use strict"; return (${expression})`)();
-            return { result };
+            const expr = String(expression);
+            
+            // Security: Whitelist only safe characters
+            // Allows: digits, operators, parentheses, spaces, decimal points
+            const safePattern = /^[\d\s+\-*/%().]+$/;
+            
+            if (!safePattern.test(expr)) {
+                return { error: 'Invalid expression: only numbers and operators (+, -, *, /, %, **) allowed' };
+            }
+            
+            // Additional check: no empty parentheses or dangerous patterns
+            if (/\(\s*\)/.test(expr) || /[a-zA-Z_$]/.test(expr)) {
+                return { error: 'Invalid expression: function calls not allowed' };
+            }
+            
+            try {
+                // Safe to evaluate after whitelist validation
+                const result = Function(`"use strict"; return (${expr})`)();
+                
+                if (typeof result !== 'number' || !Number.isFinite(result)) {
+                    return { error: 'Expression did not evaluate to a valid number' };
+                }
+                
+                return { result };
+            } catch (e) {
+                return { error: `Evaluation failed: ${e instanceof Error ? e.message : 'unknown error'}` };
+            }
         },
     },
 
