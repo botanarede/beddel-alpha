@@ -1,6 +1,14 @@
 {
     "name": "beddel",
-    "version": "1.0.0",
+    "version": "1.0.1",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/botanarede/beddel.git"
+    },
+    "homepage": "https://beddel.com.br",
+    "bugs": {
+        "url": "https://github.com/botanarede/beddel/issues"
+    },
     "type": "module",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
