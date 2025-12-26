@@ -22,6 +22,10 @@ export { handlerRegistry, registerPrimitive } from './primitives';
 export { toolRegistry, registerTool } from './tools';
 export type { ToolImplementation } from './tools';
 
+// Providers registry (for custom LLM provider registration)
+export { providerRegistry, registerProvider, createModel } from './providers';
+export type { ProviderImplementation, ProviderConfig } from './providers';
+
 // Types (re-exported for convenience, also available via beddel/client)
 export type {
     ParsedYaml,

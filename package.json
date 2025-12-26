@@ -33,6 +33,7 @@
     "dependencies": {
         "ai": "^6.0.3",
         "@ai-sdk/google": "^3.0.1",
+        "@ai-sdk/amazon-bedrock": "^4.0.3",
         "zod": "^3.23.8",
         "js-yaml": "^4.1.0"
     },

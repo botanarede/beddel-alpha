@@ -26,10 +26,10 @@ import {
     type UIMessage,
     type ToolSet,
 } from 'ai';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import type { StepConfig, ExecutionContext, PrimitiveHandler } from '../types';
 import { toolRegistry, type ToolImplementation } from '../tools';
 import { resolveVariables } from '../core/variable-resolver';
+import { createModel } from '../providers';
 
 /**
  * Callback function type for lifecycle hooks (onFinish, onError).
@@ -74,6 +74,7 @@ interface YamlToolDefinition {
  * LLM step configuration from YAML.
  */
 interface LlmConfig extends StepConfig {
+    provider?: string;
     model?: string;
     stream?: boolean;
     system?: string;
@@ -137,11 +138,10 @@ export const llmPrimitive: PrimitiveHandler = async (
 ): Promise<Response | Record<string, unknown>> => {
     const llmConfig = config as LlmConfig;
 
-    // Initialize Google Generative AI provider
-    const google = createGoogleGenerativeAI({
-        apiKey: process.env.GEMINI_API_KEY,
+    // Create model from provider registry (defaults to 'google')
+    const model = createModel(llmConfig.provider || 'google', {
+        model: llmConfig.model || 'gemini-1.5-flash',
     });
-    const model = google(llmConfig.model || 'gemini-1.5-flash');
 
     // Resolve messages from context (e.g., $input.messages)
     // AI SDK v6: Frontend sends UIMessage[], we convert to ModelMessage[]
