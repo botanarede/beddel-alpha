@@ -32,19 +32,21 @@
     "scripts": {
         "build": "tsc && npm run copy-agents",
         "copy-agents": "cp -r src/agents/*.yaml dist/agents/",
-        "dev": "tsc --watch"
+        "dev": "tsc --watch",
+        "test": "vitest"
     },
     "dependencies": {
-        "ai": "^6.0.3",
-        "@ai-sdk/google": "^3.0.1",
         "@ai-sdk/amazon-bedrock": "^4.0.3",
+        "@ai-sdk/google": "^3.0.1",
         "@openrouter/ai-sdk-provider": "^1.5.4",
-        "zod": "^3.23.8",
-        "js-yaml": "^4.1.0"
+        "ai": "^6.0.3",
+        "js-yaml": "^4.1.0",
+        "zod": "^3.23.8"
     },
     "devDependencies": {
-        "typescript": "^5.6.3",
+        "@types/js-yaml": "^4.0.9",
         "@types/node": "^22.10.2",
-        "@types/js-yaml": "^4.0.9"
+        "typescript": "^5.6.3",
+        "vitest": "^4.0.16"
     }
 }
