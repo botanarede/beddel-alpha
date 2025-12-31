@@ -22,6 +22,7 @@ export const BUILTIN_AGENTS = [
   'assistant-gitmcp',
   'text-generator',
   'multi-step-assistant',
+  'business-analyzer',
 ] as const;
 
 export type BuiltinAgentId = typeof BUILTIN_AGENTS[number];

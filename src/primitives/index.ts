@@ -13,6 +13,7 @@ import { llmPrimitive } from './llm';
 import { outputPrimitive } from './output';
 import { callAgentPrimitive } from './call-agent';
 import { mcpToolPrimitive } from './mcp-tool';
+import { googleBusinessPrimitive } from './google-business';
 
 // Re-export from llm-core for consumer access
 export { registerCallback, callbackRegistry } from './llm-core';
@@ -20,6 +21,7 @@ export { chatPrimitive } from './chat';
 export { llmPrimitive } from './llm';
 export { callAgentPrimitive } from './call-agent';
 export { mcpToolPrimitive } from './mcp-tool';
+export { googleBusinessPrimitive } from './google-business';
 
 /**
  * Registry of primitive handlers keyed by step type.
@@ -64,6 +66,13 @@ export const handlerRegistry: Record<string, PrimitiveHandler> = {
      * Use for: GitMCP, Context7, custom MCP servers.
      */
     'mcp-tool': mcpToolPrimitive,
+
+    /**
+     * Google Business Profile Primitive - Business management integration.
+     * Manages reviews, posts, Q&A, and performance metrics.
+     * Use for: Review analysis, automated responses, business insights.
+     */
+    'google-business': googleBusinessPrimitive,
 };
 
 /**

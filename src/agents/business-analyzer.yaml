@@ -1,0 +1,99 @@
+# Business Analyzer Agent
+# Analyzes Google Business Profile reviews and generates insights
+#
+# Required Environment Variables:
+# - GOOGLE_CLIENT_ID
+# - GOOGLE_CLIENT_SECRET
+# - GOOGLE_REFRESH_TOKEN
+# - GEMINI_API_KEY (for AI analysis)
+#
+# Input:
+# - accountId: Google Business Account ID
+# - locationId: Location ID to analyze
+
+metadata:
+  name: "Business Analyzer"
+  version: "1.0.0"
+  description: "Analyzes business reviews and generates actionable insights"
+
+workflow:
+  # Step 1: Fetch all reviews with auto-pagination
+  - id: "fetch-reviews"
+    type: "google-business"
+    config:
+      action: "listReviews"
+      accountId: "$input.accountId"
+      locationId: "$input.locationId"
+      pageSize: 100
+      maxPages: 10
+      orderBy: "update_time desc"
+    result: "reviewsData"
+
+  # Step 2: Analyze reviews with AI
+  - id: "analyze-sentiment"
+    type: "llm"
+    config:
+      provider: "google"
+      model: "gemini-2.0-flash-exp"
+      system: |
+        You are a business analytics expert. Analyze the provided reviews and generate a comprehensive report.
+        
+        Your analysis must include:
+        1. Overall sentiment score (1-10)
+        2. Top 5 positive themes with mention counts
+        3. Top 5 areas for improvement with mention counts
+        4. Reviews requiring urgent response (rating <= 2)
+        5. Trend analysis comparing recent vs older reviews
+        6. Actionable recommendations
+        
+        Format your response as structured JSON.
+      messages:
+        - role: "user"
+          content: |
+            Analyze these business reviews:
+            
+            Total Reviews: $stepResult.reviewsData.totalReviewCount
+            Average Rating: $stepResult.reviewsData.averageRating
+            
+            Reviews Data:
+            $stepResult.reviewsData.reviews
+    result: "analysis"
+
+  # Step 3: Generate response suggestions for negative reviews
+  - id: "generate-responses"
+    type: "llm"
+    config:
+      provider: "google"
+      model: "gemini-2.0-flash-exp"
+      system: |
+        You are a customer service expert. For each negative review (rating <= 3),
+        generate a professional, empathetic response suggestion.
+        
+        Guidelines:
+        - Acknowledge the customer's concern
+        - Apologize for their experience
+        - Offer a solution or next steps
+        - Keep responses under 150 words
+        - Be specific to the complaint mentioned
+        
+        Format as JSON array with reviewId and suggestedResponse.
+      messages:
+        - role: "user"
+          content: |
+            Generate response suggestions for these reviews:
+            $stepResult.reviewsData.reviews
+    result: "responseSuggestions"
+
+  # Step 4: Compile final report
+  - id: "compile-report"
+    type: "output-generator"
+    config:
+      template:
+        summary:
+          totalReviews: "$stepResult.reviewsData.totalReviewCount"
+          averageRating: "$stepResult.reviewsData.averageRating"
+          analysisDate: "$input.analysisDate"
+        analysis: "$stepResult.analysis.text"
+        responseSuggestions: "$stepResult.responseSuggestions.text"
+        rawReviews: "$stepResult.reviewsData.reviews"
+    result: "finalReport"
