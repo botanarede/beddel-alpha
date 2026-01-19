@@ -2,7 +2,7 @@
  * Beddel Protocol - Variable Resolver
  * 
  * Resolves template variables in step configurations.
- * Patterns: $input.path.to.value, $stepResult.path.to.value
+ * Patterns: $input.path.to.value, $stepResult.path.to.value, $env.VAR_NAME
  * 
  * Server-only: Used within WorkflowExecutor during step execution.
  */
@@ -45,6 +45,13 @@ function interpolateVariables(template: string, context: ExecutionContext): stri
     const variablePattern = /\$([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)/g;
 
     return template.replace(variablePattern, (match, fullPath: string) => {
+        // Handle $env.* pattern (environment variables)
+        if (fullPath.startsWith('env.')) {
+            const envVar = fullPath.slice(4); // Remove "env."
+            const value = process.env[envVar];
+            return value !== undefined ? value : match;
+        }
+
         // Handle $input.* pattern
         if (fullPath.startsWith('input.')) {
             const path = fullPath.slice(6); // Remove "input."
@@ -88,6 +95,7 @@ function interpolateVariables(template: string, context: ExecutionContext): stri
  * Resolve variable references in a template value.
  * 
  * Supports:
+ * - "$env.VAR_NAME" → process.env.VAR_NAME (server-side only)
  * - "$input.messages" → context.input.messages
  * - "$stepResult.llmOutput.text" → context.variables.get('llmOutput').text
  * - Nested objects/arrays are resolved recursively
@@ -105,6 +113,13 @@ export function resolveVariables(template: unknown, context: ExecutionContext): 
     // Handle string patterns
     if (typeof template === 'string') {
         // Check if entire string is a single variable reference
+        
+        // Check for $env.* pattern (entire string) - environment variables
+        if (template.startsWith('$env.') && !template.includes(' ') && !template.includes('\n')) {
+            const envVar = template.slice(5); // Remove "$env."
+            return process.env[envVar];
+        }
+
         // Check for $input.* pattern (entire string)
         if (template.startsWith('$input.') && !template.includes(' ') && !template.includes('\n')) {
             const path = template.slice(7); // Remove "$input."

@@ -39,6 +39,8 @@ export interface WorkflowStep {
 export interface ParsedYaml {
     metadata: YamlMetadata;
     workflow: WorkflowStep[];
+    /** Optional explicit return template for API response shaping */
+    return?: unknown;
 }
 
 /**

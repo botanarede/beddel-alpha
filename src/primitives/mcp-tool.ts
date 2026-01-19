@@ -23,6 +23,8 @@ interface McpToolConfig extends StepConfig {
     arguments?: Record<string, unknown>;
     /** Timeout in milliseconds (default: 30000) */
     timeout?: number;
+    /** Custom headers for authentication (e.g., Authorization, Notion-Version) */
+    headers?: Record<string, string>;
 }
 
 /**
@@ -83,6 +85,9 @@ export const mcpToolPrimitive: PrimitiveHandler = async (
         ? resolveVariables(mcpConfig.arguments, context) as Record<string, unknown>
         : {};
     const timeout = mcpConfig.timeout || 30000;
+    const headers = mcpConfig.headers
+        ? resolveVariables(mcpConfig.headers, context) as Record<string, string>
+        : undefined;
 
     // Validate required fields
     if (!url) {
@@ -94,6 +99,9 @@ export const mcpToolPrimitive: PrimitiveHandler = async (
 
     console.log(`[Beddel MCP] Connecting to ${url}...`);
     console.log(`[Beddel MCP] Tool: ${toolName}`);
+    if (headers) {
+        console.log(`[Beddel MCP] Using custom headers: ${Object.keys(headers).join(', ')}`);
+    }
 
     let client: any = null;
 
@@ -101,8 +109,14 @@ export const mcpToolPrimitive: PrimitiveHandler = async (
         // Lazy load MCP SDK
         await loadMcpSdk();
 
+        // Create transport options with headers if provided
+        const transportOptions: { requestInit?: RequestInit } = {};
+        if (headers) {
+            transportOptions.requestInit = { headers };
+        }
+
         // Create transport and client
-        const transport = new SSEClientTransport(new URL(url));
+        const transport = new SSEClientTransport(new URL(url), transportOptions);
         client = new Client(
             { name: 'beddel-mcp-client', version: '1.0.0' },
             { capabilities: {} }

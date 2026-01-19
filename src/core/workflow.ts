@@ -9,13 +9,16 @@
  * - If a handler returns a Response instance (streaming), execution stops
  *   and that Response is returned immediately to the client.
  * - Non-Response results are stored in context.variables for subsequent steps.
+ * - If 'return' is defined in YAML, it shapes the final API response.
  */
 
 import type { ParsedYaml, WorkflowStep, ExecutionContext, StepConfig } from '../types';
 import { handlerRegistry } from '../primitives';
+import { resolveVariables } from './variable-resolver';
 
 export class WorkflowExecutor {
     private steps: WorkflowStep[];
+    private returnTemplate?: unknown;
 
     /**
      * Create a new WorkflowExecutor from parsed YAML.
@@ -23,13 +26,14 @@ export class WorkflowExecutor {
      */
     constructor(yaml: ParsedYaml) {
         this.steps = yaml.workflow;
+        this.returnTemplate = yaml.return;
     }
 
     /**
      * Execute the workflow pipeline.
      * 
      * @param input - Input data (e.g., { messages: [...] } for chat)
-     * @returns Response if streaming, or accumulated variables object
+     * @returns Response if streaming, last step result if no 'result' key, or accumulated variables object
      * 
      * @example
      * ```typescript
@@ -46,6 +50,8 @@ export class WorkflowExecutor {
             input,
             variables: new Map(),
         };
+
+        let lastResult: Record<string, unknown> | null = null;
 
         for (const step of this.steps) {
             const handler = handlerRegistry[step.type];
@@ -69,9 +75,33 @@ export class WorkflowExecutor {
             if (step.result) {
                 context.variables.set(step.result, result);
             }
+
+            // Track last result for final return
+            lastResult = result;
         }
 
-        // No streaming occurred - return accumulated variables as object
+        // If last step has no 'result' key, return its output directly
+        // This allows the final step to define the API response shape
+        const lastStep = this.steps[this.steps.length - 1];
+        if (lastStep && !lastStep.result && lastResult) {
+            return lastResult;
+        }
+
+        // If 'return' template is defined, resolve and return it
+        // This provides explicit control over the API response contract
+        if (this.returnTemplate !== undefined) {
+            const resolved = resolveVariables(this.returnTemplate, context);
+            
+            // Ensure we return a Record
+            if (typeof resolved === 'object' && resolved !== null && !Array.isArray(resolved)) {
+                return resolved as Record<string, unknown>;
+            }
+            
+            // Wrap primitives and arrays in an object
+            return { value: resolved };
+        }
+
+        // Fallback: return accumulated variables as object
         return Object.fromEntries(context.variables);
     }
 }

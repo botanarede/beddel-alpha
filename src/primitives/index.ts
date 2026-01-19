@@ -14,6 +14,7 @@ import { outputPrimitive } from './output';
 import { callAgentPrimitive } from './call-agent';
 import { mcpToolPrimitive } from './mcp-tool';
 import { googleBusinessPrimitive } from './google-business';
+import { notionPrimitive } from './notion';
 
 // Re-export from llm-core for consumer access
 export { registerCallback, callbackRegistry } from './llm-core';
@@ -22,6 +23,7 @@ export { llmPrimitive } from './llm';
 export { callAgentPrimitive } from './call-agent';
 export { mcpToolPrimitive } from './mcp-tool';
 export { googleBusinessPrimitive } from './google-business';
+export { notionPrimitive } from './notion';
 
 /**
  * Registry of primitive handlers keyed by step type.
@@ -73,6 +75,13 @@ export const handlerRegistry: Record<string, PrimitiveHandler> = {
      * Use for: Review analysis, automated responses, business insights.
      */
     'google-business': googleBusinessPrimitive,
+
+    /**
+     * Notion Primitive - Notion workspace integration.
+     * Manages pages, databases, blocks, and search.
+     * Use for: Content management, database operations, knowledge bases.
+     */
+    'notion': notionPrimitive,
 };
 
 /**
