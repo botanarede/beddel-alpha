@@ -31,7 +31,7 @@
 
 ### Variable Resolver (`src/core/variable-resolver.ts`)
 
-**Responsibility:** Resolve `$input.*` and `$stepResult.*` variable references.
+**Responsibility:** Resolve `$input.*`, `$stepResult.*`, and `$env.*` variable references.
 
 **Key Interfaces:**
 - `resolveVariables(template: any, context: ExecutionContext): any`
@@ -249,16 +249,20 @@ This design is cleaner than a `stream: true/false` flag because:
 
 ## Built-in Agents (`src/agents/`)
 
-Pre-configured agents bundled with the package:
+Pre-configured agents bundled with the package, organized by category:
 
-| Agent | Type | Description |
-|-------|------|-------------|
-| `assistant.yaml` | `chat` | Google Gemini streaming assistant |
-| `assistant-bedrock.yaml` | `chat` | Amazon Bedrock assistant |
-| `assistant-openrouter.yaml` | `chat` | OpenRouter free tier assistant |
-| `assistant-gitmcp.yaml` | `mcp-tool` + `chat` | Documentation assistant via GitMCP |
-| `text-generator.yaml` | `llm` | Text generation (non-streaming) |
-| `multi-step-assistant.yaml` | `call-agent` + `llm` | 4-step analysis pipeline |
+| Agent | Category | Type | Description |
+|-------|----------|------|-------------|
+| `assistant` | `chat/` | `chat` | Google Gemini streaming assistant |
+| `assistant-bedrock` | `chat/` | `chat` | Amazon Bedrock assistant |
+| `assistant-openrouter` | `chat/` | `chat` | OpenRouter free tier assistant |
+| `assistant-gitmcp` | `mcp/` | `mcp-tool` + `chat` | Documentation assistant via GitMCP |
+| `business-analyzer` | `google-business/` | `google-business` + `llm` | Business reviews analyzer |
+| `newsletter-signup` | `marketing/` | `llm` + `notion` | Lead capture with Notion |
+| `text-generator` | `utility/` | `llm` | Text generation (non-streaming) |
+| `multi-step-assistant` | `examples/` | `call-agent` + `llm` | 4-step analysis pipeline |
+
+**Categories:** `chat/`, `mcp/`, `google-business/`, `marketing/`, `utility/`, `examples/`
 
 ---
 

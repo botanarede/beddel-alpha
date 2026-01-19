@@ -1,0 +1,106 @@
+# Newsletter Signup Agent
+# Registers users to the newsletter with AI analysis and saves to Notion
+#
+# Required Environment Variables:
+# - NOTION_TOKEN (Internal Integration Secret)
+# - NOTION_DATABASE_ID (Database ID for newsletter signups)
+# - GEMINI_API_KEY (for AI analysis)
+#
+# Input:
+# - name: User's name
+# - email: User's email
+# - message: Optional message from user
+# - createdAt: ISO date string
+
+metadata:
+  name: "Newsletter Signup Agent"
+  version: "1.3.0"
+  description: "Registers users to the newsletter with AI analysis and saves to Notion"
+  builtin: true
+
+workflow:
+  # Step 1: Analyze user profile and generate structured JSON
+  - id: "analyze-user"
+    type: "llm"
+    config:
+      provider: "google"
+      model: "gemini-2.0-flash-exp"
+      system: |
+        You are a lead analyst for a technology newsletter.
+        
+        Analyze the user data and return ONLY a valid JSON (no markdown, no ```):
+        {
+          "tags": [{"name": "Tag1"}],
+          "sentiment": {"name": "Positive"},
+          "summary": "One-line summary"
+        }
+        
+        IMPORTANT RULES:
+        - tags: Array of objects with "name". Allowed values: "Support", "Sales", "Partnership", "Feedback"
+        - sentiment: Object with "name". Allowed values: "Positive", "Neutral", "Negative"
+        - summary: Short summary string (maximum 100 characters)
+        
+        Example for a positive message about the product:
+        {"tags": [{"name": "Feedback"}], "sentiment": {"name": "Positive"}, "summary": "User praises the product"}
+        
+        If there is no significant message:
+        {"tags": [{"name": "Feedback"}], "sentiment": {"name": "Neutral"}, "summary": "New newsletter subscriber"}
+        
+        Return ONLY the JSON, nothing else.
+      messages:
+        - role: "user"
+          content: |
+            Name: $input.name
+            Email: $input.email
+            Message: $input.message
+    result: "userAnalysis"
+
+  # Step 2: Parse the JSON from LLM
+  - id: "parse-analysis"
+    type: "output-generator"
+    config:
+      json: "$stepResult.userAnalysis.text"
+    result: "parsedAnalysis"
+
+  # Step 3: Create Notion page with structured data
+  - id: "create-notion-entry"
+    type: "notion"
+    config:
+      action: "createPage"
+      parent:
+        type: "database_id"
+        database_id: "$env.NOTION_DATABASE_ID"
+      properties:
+        Name:
+          title:
+            - text:
+                content: "$input.name"
+        Email:
+          email: "$input.email"
+        Message:
+          rich_text:
+            - text:
+                content: "$input.message"
+        Summary:
+          rich_text:
+            - text:
+                content: "$stepResult.parsedAnalysis.summary"
+        Tags:
+          multi_select: "$stepResult.parsedAnalysis.tags"
+        Sentiment:
+          select: "$stepResult.parsedAnalysis.sentiment"
+        CreatedAt:
+          date:
+            start: "$input.createdAt"
+    result: "notionResult"
+
+# Explicit Return: Define the API response contract
+return:
+  success: true
+  message: "Registration completed successfully!"
+  notionPageId: "$stepResult.notionResult.pageId"
+  notionUrl: "$stepResult.notionResult.url"
+  analysis:
+    tags: "$stepResult.parsedAnalysis.tags"
+    sentiment: "$stepResult.parsedAnalysis.sentiment"
+    summary: "$stepResult.parsedAnalysis.summary"

@@ -3,7 +3,7 @@ import { loadYaml } from '../core/parser';
 import { WorkflowExecutor } from '../core/workflow';
 import { join, normalize } from 'path';
 import { access } from 'fs/promises';
-import { getBuiltinAgentsPath } from '../agents';
+import { getBuiltinAgentPath } from '../agents';
 
 export interface BeddelHandlerOptions {
     /** Path to user-defined agents (relative to CWD). Default: 'src/agents' */
@@ -57,10 +57,10 @@ async function resolveAgentPath(
         return userPath;
     }
 
-    // 2. Fallback: built-in agents from package
+    // 2. Fallback: built-in agents from package (supports subfolder structure)
     if (!disableBuiltinAgents) {
-        const builtinPath = join(getBuiltinAgentsPath(), `${agentId}.yaml`);
-        if (await fileExists(builtinPath)) {
+        const builtinPath = getBuiltinAgentPath(agentId);
+        if (builtinPath && await fileExists(builtinPath)) {
             return builtinPath;
         }
     }

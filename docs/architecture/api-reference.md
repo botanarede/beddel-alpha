@@ -1,6 +1,6 @@
 # API Reference
 
-> **Beddel Protocol v1.0.4** — Complete API documentation for all public exports.
+> **Beddel Protocol v1.0.6** — Complete API documentation for all public exports.
 
 ---
 
@@ -31,7 +31,7 @@ console.log(yaml.metadata.name); // "Streaming Assistant"
 
 #### `resolveVariables(template: unknown, context: ExecutionContext): unknown`
 
-Resolve variable references (`$input.*`, `$stepResult.*`) in templates.
+Resolve variable references (`$input.*`, `$stepResult.*`, `$env.*`) in templates.
 
 ```typescript
 import { resolveVariables } from 'beddel';
@@ -81,6 +81,8 @@ Map of primitive step types to their handler functions.
 - `output-generator` — Deterministic JSON transform
 - `call-agent` — Sub-agent invocation
 - `mcp-tool` — External MCP server tool execution
+- `google-business` — Google Business Profile API integration
+- `notion` — Notion workspace integration (pages, databases, blocks)
 
 #### `toolRegistry: Record<string, ToolImplementation>`
 
@@ -240,6 +242,59 @@ import type {
 
 ---
 
+## YAML Workflow Structure
+
+### Explicit Return Template
+
+The `return` property at the workflow level defines the exact shape of the API response. This provides explicit control over the API contract, separating internal workflow state from the public response.
+
+**Without `return`:** API returns all accumulated step variables (internal state exposed)
+
+**With `return`:** API returns only the resolved template (clean contract)
+
+```yaml
+metadata:
+  name: "Newsletter Signup"
+  version: "1.0.0"
+
+workflow:
+  - id: "analyze"
+    type: "llm"
+    config:
+      # ... LLM config ...
+    result: "analysis"  # Stored internally
+
+  - id: "save"
+    type: "notion"
+    config:
+      # ... Notion config ...
+    result: "notionResult"  # Stored internally
+
+# Explicit API response shape
+return:
+  success: true
+  pageId: "$stepResult.notionResult.pageId"
+  url: "$stepResult.notionResult.url"
+  summary: "$stepResult.analysis.text"
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "pageId": "abc123...",
+  "url": "https://notion.so/...",
+  "summary": "Analysis text..."
+}
+```
+
+**Return Resolution Order:**
+1. If `return` is defined → resolve and return the template
+2. If last step has no `result` → return last step's output directly
+3. Otherwise → return all accumulated variables
+
+---
+
 ## Primitives
 
 ### `chat` Primitive
@@ -316,7 +371,16 @@ workflow:
 
 ### `output-generator` Primitive
 
-Deterministic JSON transform using variable resolution.
+Deterministic JSON transform using variable resolution. Supports optional JSON parsing from LLM text output.
+
+**Config Options:**
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `template` | `object` | No | JSON template with variable references |
+| `json` | `string` | No | Variable reference to parse as JSON (e.g., `$stepResult.llmOutput.text`) |
+
+**Basic Usage:**
 
 ```yaml
 workflow:
@@ -328,6 +392,36 @@ workflow:
         status: "completed"
     result: "finalOutput"
 ```
+
+**JSON Parsing from LLM Output:**
+
+When LLM returns JSON as text, use the `json` parameter to parse it and access fields via `$json.*`:
+
+```yaml
+workflow:
+  # Step 1: LLM generates JSON
+  - id: "analyze"
+    type: "llm"
+    config:
+      system: "Return JSON: {\"tags\": [\"tag1\"], \"sentiment\": \"Positive\"}"
+      messages: "$input.messages"
+    result: "analysis"
+
+  # Step 2: Parse JSON and extract fields
+  - id: "parse"
+    type: "output-generator"
+    config:
+      json: "$stepResult.analysis.text"
+      template:
+        tags: "$json.tags"
+        sentiment: "$json.sentiment"
+    result: "parsed"
+```
+
+The `json` parameter:
+- Extracts JSON from markdown code blocks if present
+- Parses the JSON and makes it available as `$json.*`
+- If no template is provided, returns the parsed JSON directly
 
 ### `mcp-tool` Primitive
 
@@ -389,18 +483,102 @@ workflow:
       messages: "$input.messages"
 ```
 
+### `notion` Primitive
+
+Integrate with Notion API for pages, databases, blocks, and search.
+
+**Environment Variables:**
+- `NOTION_TOKEN` — Internal Integration Secret (starts with `ntn_`)
+
+**Supported Actions:**
+
+| Action | Description | Required Config |
+|--------|-------------|-----------------|
+| `search` | Search pages and databases | `query?`, `filter?` |
+| `getPage` | Retrieve a page by ID | `pageId` |
+| `createPage` | Create a new page | `parent`, `properties` |
+| `updatePage` | Update page properties | `pageId`, `properties?` |
+| `getDatabase` | Retrieve database schema | `databaseId` |
+| `queryDatabase` | Query database with filters | `databaseId`, `filter?`, `sorts?` |
+| `getBlocks` | Get block children | `blockId` or `pageId` |
+| `appendBlocks` | Append blocks to page/block | `blockId` or `pageId`, `children` |
+| `createDatabase` | Create a new database | `parent`, `properties`, `title?` |
+
+**Example:**
+
+```yaml
+workflow:
+  - id: "create-entry"
+    type: "notion"
+    config:
+      action: "createPage"
+      parent:
+        type: "database_id"
+        database_id: "a7661a0a-c5b7-47a0-98f8-fd07789d1647"
+      properties:
+        Name:
+          title:
+            - text:
+                content: "$input.name"
+        Email:
+          email: "$input.email"
+    result: "notionResult"
+```
+
+> See `packages/beddel/docs/primitives/notion-primitive.md` for full documentation.
+
+### `google-business` Primitive
+
+Integrate with Google Business Profile APIs for reviews, posts, Q&A, and metrics.
+
+**Environment Variables:**
+- `GOOGLE_CLIENT_ID` — OAuth2 Client ID
+- `GOOGLE_CLIENT_SECRET` — OAuth2 Client Secret
+- `GOOGLE_REFRESH_TOKEN` — OAuth2 Refresh Token
+
+**Supported Actions:**
+
+| Action | Description |
+|--------|-------------|
+| `listReviews` | Fetch reviews with auto-pagination |
+| `replyReview` | Reply to a specific review |
+| `batchGetReviews` | Fetch from multiple locations |
+| `createPost` | Create a local post |
+| `listPosts` | List all posts |
+| `getMetrics` | Fetch performance metrics |
+| `listQuestions` | List Q&A |
+| `answerQuestion` | Answer a question |
+
+**Example:**
+
+```yaml
+workflow:
+  - id: "fetch-reviews"
+    type: "google-business"
+    config:
+      action: "listReviews"
+      accountId: "$input.accountId"
+      locationId: "$input.locationId"
+      pageSize: 100
+    result: "reviewsData"
+```
+
+> See `packages/beddel/docs/primitives/google-business-primitive.md` for full documentation.
+
 ---
 
 ## Built-in Agents
 
-| Agent ID | Provider | Description |
-|----------|----------|-------------|
-| `assistant` | Google | Streaming chat assistant |
-| `assistant-bedrock` | Bedrock | Llama 3.2 assistant |
-| `assistant-openrouter` | OpenRouter | Free tier assistant |
-| `assistant-gitmcp` | Google + MCP | Documentation assistant via GitMCP |
-| `text-generator` | Google | Text generation (non-streaming) |
-| `multi-step-assistant` | Google | 4-step analysis pipeline |
+| Agent ID | Category | Provider | Description |
+|----------|----------|----------|-------------|
+| `assistant` | `chat/` | Google | Streaming chat assistant |
+| `assistant-bedrock` | `chat/` | Bedrock | Llama 3.2 assistant |
+| `assistant-openrouter` | `chat/` | OpenRouter | Free tier assistant |
+| `assistant-gitmcp` | `mcp/` | Google + MCP | Documentation assistant via GitMCP |
+| `business-analyzer` | `google-business/` | Google | Business reviews analyzer |
+| `newsletter-signup` | `marketing/` | Google | Lead capture with Notion integration |
+| `text-generator` | `utility/` | Google | Text generation (non-streaming) |
+| `multi-step-assistant` | `examples/` | Google | 4-step analysis pipeline |
 
 ---
 
@@ -412,6 +590,7 @@ workflow:
 interface ParsedYaml {
   metadata: YamlMetadata;
   workflow: WorkflowStep[];
+  return?: unknown;  // Optional explicit return template
 }
 ```
 
@@ -456,3 +635,7 @@ type PrimitiveHandler = (
 | 2024-12-26 | 1.0.3 | OpenRouter provider, built-in agents |
 | 2024-12-27 | 1.0.4 | Separated `chat` and `llm` primitives, implemented `call-agent` |
 | 2024-12-28 | 1.0.5 | Added `mcp-tool` primitive, `assistant-gitmcp` agent, system prompt variable resolution |
+| 2024-12-30 | 1.0.6 | Added `google-business` primitive for Google Business Profile API |
+| 2026-01-01 | 1.0.7 | Added `notion` primitive for Notion API integration |
+| 2026-01-19 | 1.0.8 | Added `json` parameter to `output-generator`, explicit `return` template support |
+| 2026-01-19 | 1.0.9 | Reorganized built-in agents into category subfolders, added `newsletter-signup` agent |

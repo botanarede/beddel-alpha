@@ -236,6 +236,7 @@ workflow:
 |---------|-------------|---------|
 | `$input.*` | Access request input | `$input.messages` |
 | `$stepResult.varName.*` | Access step result | `$stepResult.llmOutput.text` |
+| `$env.*` | Access environment variables | `$env.NOTION_DATABASE_ID` |
 
 ## Built-in Tools
 

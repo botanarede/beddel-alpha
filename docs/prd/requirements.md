@@ -8,7 +8,7 @@
   - `stream: true` → returns `Response` from `streamText`
   - `stream: false` → returns JSON object from `generateText`
 - **FR4:** The executor MUST immediately return a `Response` when a primitive returns a stream
-- **FR5:** The system MUST resolve variables using `$input.*` and `$stepResult.*` syntax
+- **FR5:** The system MUST resolve variables using `$input.*`, `$stepResult.*`, and `$env.*` syntax
 - **FR6:** The `output-generator` primitive MUST perform deterministic JSON transformation without LLM calls
 - **FR7:** The `call-agent` primitive MUST allow recursive invocation of other YAML workflow files
 - **FR8:** The system MUST expose a REST endpoint (`POST /api/beddel/chat`) for chat interactions

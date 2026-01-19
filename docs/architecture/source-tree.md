@@ -7,13 +7,21 @@ packages/beddel/
 │   ├── server.ts                 # Server handler barrel export
 │   ├── client.ts                 # Client exports (types only, browser-safe)
 │   ├── agents/                   # Built-in agents (bundled with package)
-│   │   ├── index.ts              # Built-in agents registry
-│   │   ├── assistant.yaml        # Google Gemini streaming assistant
-│   │   ├── assistant-bedrock.yaml # Amazon Bedrock assistant
-│   │   ├── assistant-openrouter.yaml # OpenRouter assistant
-│   │   ├── text-generator.yaml   # Text generation (non-streaming)
-│   │   ├── multi-step-assistant.yaml # 4-step analysis pipeline
-│   │   └── assistant-gitmcp.yaml # GitMCP documentation assistant
+│   │   ├── index.ts              # Built-in agents registry (BUILTIN_AGENT_PATHS)
+│   │   ├── chat/                 # Streaming chat assistants
+│   │   │   ├── assistant.yaml
+│   │   │   ├── assistant-bedrock.yaml
+│   │   │   └── assistant-openrouter.yaml
+│   │   ├── mcp/                  # MCP server integrations
+│   │   │   └── assistant-gitmcp.yaml
+│   │   ├── google-business/      # Google Business Profile agents
+│   │   │   └── business-analyzer.yaml
+│   │   ├── marketing/            # Lead capture, newsletters
+│   │   │   └── newsletter-signup.yaml
+│   │   ├── utility/              # General-purpose tools
+│   │   │   └── text-generator.yaml
+│   │   └── examples/             # Demo pipelines
+│   │       └── multi-step-assistant.yaml
 │   ├── core/
 │   │   ├── parser.ts             # YAML parsing (FAILSAFE_SCHEMA)
 │   │   ├── workflow.ts           # WorkflowExecutor class
@@ -86,20 +94,33 @@ primitives/
 
 ## Built-in Agents
 
-Agents bundled with the package, available without configuration:
+Agents bundled with the package, available without configuration. Organized by category:
 
-| File | Type | Provider | Description |
-|------|------|----------|-------------|
-| `assistant.yaml` | `chat` | Google | Streaming chat assistant |
-| `assistant-bedrock.yaml` | `chat` | Bedrock | Llama 3.2 assistant |
-| `assistant-openrouter.yaml` | `chat` | OpenRouter | Free tier assistant |
-| `assistant-gitmcp.yaml` | `mcp-tool` + `chat` | Google + MCP | Documentation assistant via GitMCP |
-| `text-generator.yaml` | `llm` | Google | Text generation |
-| `multi-step-assistant.yaml` | `call-agent` + `llm` | Google | 4-step pipeline |
+| Agent ID | Category | Type | Provider | Description |
+|----------|----------|------|----------|-------------|
+| `assistant` | `chat/` | `chat` | Google | Streaming chat assistant |
+| `assistant-bedrock` | `chat/` | `chat` | Bedrock | Llama 3.2 assistant |
+| `assistant-openrouter` | `chat/` | `chat` | OpenRouter | Free tier assistant |
+| `assistant-gitmcp` | `mcp/` | `mcp-tool` + `chat` | Google + MCP | Documentation assistant via GitMCP |
+| `business-analyzer` | `google-business/` | `google-business` + `llm` | Google | Business reviews analyzer |
+| `newsletter-signup` | `marketing/` | `llm` + `notion` | Google | Lead capture with Notion |
+| `text-generator` | `utility/` | `llm` | Google | Text generation |
+| `multi-step-assistant` | `examples/` | `call-agent` + `llm` | Google | 4-step pipeline |
+
+**Agent Categories:**
+
+| Category | Folder | Description |
+|----------|--------|-------------|
+| Chat | `chat/` | Streaming chat assistants (different providers) |
+| MCP | `mcp/` | MCP server integrations (GitMCP, Context7) |
+| Google Business | `google-business/` | Google Business Profile API agents |
+| Marketing | `marketing/` | Lead capture, newsletters, CRM |
+| Utility | `utility/` | General-purpose tools |
+| Examples | `examples/` | Demo pipelines |
 
 **Resolution Order:**
 1. User agents (`src/agents/*.yaml`) — allows override
-2. Built-in agents (package) — fallback
+2. Built-in agents (package, via `BUILTIN_AGENT_PATHS` map) — fallback
 
 ---
 
