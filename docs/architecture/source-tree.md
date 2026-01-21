@@ -20,16 +20,18 @@ packages/beddel/
 │   │   │   └── newsletter-signup.yaml
 │   │   ├── utility/              # General-purpose tools
 │   │   │   └── text-generator.yaml
+│   │   ├── observability/        # Observability demo agents
+│   │   │   └── observability-demo.yaml
 │   │   └── examples/             # Demo pipelines
 │   │       └── multi-step-assistant.yaml
 │   ├── core/
 │   │   ├── parser.ts             # YAML parsing (FAILSAFE_SCHEMA)
-│   │   ├── workflow.ts           # WorkflowExecutor class
+│   │   ├── workflow.ts           # WorkflowExecutor class (with observability)
 │   │   └── variable-resolver.ts  # $variable.path resolution
 │   ├── primitives/
 │   │   ├── index.ts              # Handler registry (handlerRegistry)
 │   │   ├── llm-core.ts           # Shared utilities (mapTools, callbacks)
-│   │   ├── chat.ts               # Frontend streaming primitive
+│   │   ├── chat.ts               # Frontend streaming primitive (with trace support)
 │   │   ├── llm.ts                # Workflow blocking primitive
 │   │   ├── output.ts             # JSON transform primitive
 │   │   ├── call-agent.ts         # Sub-agent invocation primitive
@@ -41,7 +43,8 @@ packages/beddel/
 │   ├── tools/
 │   │   └── index.ts              # Tool registry (calculator, getCurrentTime)
 │   └── types/
-│       └── index.ts              # Type definitions
+│       ├── index.ts              # Type definitions
+│       └── observability.ts      # Observability type definitions
 ├── docs/
 │   ├── architecture/             # Architecture documentation
 │   └── prd/                      # Product requirements
@@ -105,6 +108,7 @@ Agents bundled with the package, available without configuration. Organized by c
 | `business-analyzer` | `google-business/` | `google-business` + `llm` | Google | Business reviews analyzer |
 | `newsletter-signup` | `marketing/` | `llm` + `notion` | Google | Lead capture with Notion |
 | `text-generator` | `utility/` | `llm` | Google | Text generation |
+| `observability-demo` | `observability/` | `mcp-tool` + `llm` | Google + MCP | Multi-step demo with trace |
 | `multi-step-assistant` | `examples/` | `call-agent` + `llm` | Google | 4-step pipeline |
 
 **Agent Categories:**
@@ -116,6 +120,7 @@ Agents bundled with the package, available without configuration. Organized by c
 | Google Business | `google-business/` | Google Business Profile API agents |
 | Marketing | `marketing/` | Lead capture, newsletters, CRM |
 | Utility | `utility/` | General-purpose tools |
+| Observability | `observability/` | Agents demonstrating trace collection |
 | Examples | `examples/` | Demo pipelines |
 
 **Resolution Order:**

@@ -41,6 +41,10 @@ export const BUILTIN_AGENT_PATHS: Record<string, string> = {
   // Utility
   'text-generator': 'utility/text-generator.yaml',
   
+  // Observability
+  'observability-demo': 'observability/observability-demo.yaml',
+  'observability-demo-stream': 'observability/observability-demo-stream.yaml',
+  
   // Examples
   'multi-step-assistant': 'examples/multi-step-assistant.yaml',
 };
@@ -93,6 +97,7 @@ export const AGENT_CATEGORIES = [
   'google-business',
   'marketing',
   'utility',
+  'observability',
   'examples',
 ] as const;
 

@@ -1,6 +1,6 @@
 # API Reference
 
-> **Beddel Protocol v1.0.6** — Complete API documentation for all public exports.
+> **Beddel Protocol v1.0.8** — Complete API documentation for all public exports.
 
 ---
 
@@ -237,7 +237,94 @@ import type {
   YamlMetadata,
   ExecutionContext,
   PrimitiveHandler,
+  BeddelResponse,
+  // Observability types
+  ObservabilityConfig,
+  StepEvent,
+  StepStartEvent,
+  StepCompleteEvent,
+  StepErrorEvent,
 } from 'beddel/client';
+```
+
+---
+
+## Observability
+
+Beddel includes native observability support for workflow execution tracing.
+
+### Enabling Observability
+
+Add `observability.enabled: true` to your agent's metadata:
+
+```yaml
+metadata:
+  name: "My Agent"
+  version: "1.0.0"
+  observability:
+    enabled: true
+
+workflow:
+  # ... steps
+```
+
+### Response Format
+
+When enabled, the response includes a `__trace` array:
+
+```typescript
+interface BeddelResponse<T = unknown> {
+  success: boolean;
+  data?: T;
+  __trace?: StepEvent[];  // Only present when observability is enabled
+  error?: string;
+}
+```
+
+### Event Types
+
+| Event | Description | Extra Fields |
+|-------|-------------|--------------|
+| `step-start` | Step execution begins | — |
+| `step-complete` | Step completed successfully | `duration` (ms) |
+| `step-error` | Step threw an error | `duration` (ms), `errorType` |
+
+### Error Types (Sanitized)
+
+For security, error messages are never exposed:
+
+| Error Type | Description |
+|------------|-------------|
+| `timeout` | Operation timed out |
+| `auth_failed` | Authentication/authorization error |
+| `validation` | Input validation failed |
+| `network` | Network connectivity issue |
+| `unknown` | Uncategorized error |
+
+### Streaming with Observability
+
+For `chat` primitives, trace events are sent as transient data before the stream.
+
+> **Note:** Transient data parts are only accessible via the `onData` callback. They do not appear in the `messages` array.
+
+```typescript
+// Client-side handling with useChat (AI SDK v6)
+import { useChat } from '@ai-sdk/react';
+import { DefaultChatTransport } from 'ai';
+
+const [streamTrace, setStreamTrace] = useState<StepEvent[]>([]);
+
+const { messages, sendMessage, status } = useChat({
+  transport: new DefaultChatTransport({
+    api: '/api/beddel/chat',
+    body: { agentId: 'observability-demo-stream' },
+  }),
+  onData: (dataPart) => {
+    if (dataPart.type === 'data-trace') {
+      setStreamTrace(dataPart.data.events);
+    }
+  },
+});
 ```
 
 ---
@@ -578,6 +665,7 @@ workflow:
 | `business-analyzer` | `google-business/` | Google | Business reviews analyzer |
 | `newsletter-signup` | `marketing/` | Google | Lead capture with Notion integration |
 | `text-generator` | `utility/` | Google | Text generation (non-streaming) |
+| `observability-demo` | `observability/` | Google + MCP | Multi-step demo with trace collection |
 | `multi-step-assistant` | `examples/` | Google | 4-step analysis pipeline |
 
 ---
@@ -637,5 +725,4 @@ type PrimitiveHandler = (
 | 2024-12-28 | 1.0.5 | Added `mcp-tool` primitive, `assistant-gitmcp` agent, system prompt variable resolution |
 | 2024-12-30 | 1.0.6 | Added `google-business` primitive for Google Business Profile API |
 | 2026-01-01 | 1.0.7 | Added `notion` primitive for Notion API integration |
-| 2026-01-19 | 1.0.8 | Added `json` parameter to `output-generator`, explicit `return` template support |
-| 2026-01-19 | 1.0.9 | Reorganized built-in agents into category subfolders, added `newsletter-signup` agent |
+| 2026-01-21 | 1.0.8 | Added native observability with workflow tracing and step lifecycle events |

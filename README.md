@@ -1,7 +1,7 @@
 # Beddel Protocol
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![npm version](https://img.shields.io/badge/npm-1.0.7-brightgreen.svg)](https://www.npmjs.com/package/beddel)
+[![npm version](https://img.shields.io/badge/npm-1.0.8-brightgreen.svg)](https://www.npmjs.com/package/beddel)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
 [![AI SDK](https://img.shields.io/badge/AI%20SDK-v6-purple.svg)](https://sdk.vercel.ai/)
 
@@ -16,6 +16,7 @@
 - 📦 **Bundle Separation** — Three entry points for server, client, and full API access
 - 🌐 **Multi-Provider** — Built-in support for Google Gemini, Amazon Bedrock, and OpenRouter (400+ models)
 - 🔀 **Semantic Primitives** — `chat` for streaming frontend, `llm` for blocking workflows
+- 📊 **Native Observability** — Built-in workflow tracing with step lifecycle events
 
 ## Installation
 
@@ -140,6 +141,82 @@ export default function Chat() {
     </div>
   );
 }
+```
+
+## Observability
+
+Beddel includes native observability support for workflow execution tracing. Enable it in your agent's metadata:
+
+```yaml
+metadata:
+  name: "My Agent"
+  version: "1.0.0"
+  observability:
+    enabled: true
+
+workflow:
+  # ... steps
+```
+
+When enabled, the response includes a `__trace` array with step lifecycle events:
+
+```json
+{
+  "success": true,
+  "data": { ... },
+  "__trace": [
+    { "type": "step-start", "stepId": "fetch-docs", "stepType": "mcp-tool", "stepIndex": 0, "totalSteps": 3, "timestamp": 1705849200000 },
+    { "type": "step-complete", "stepId": "fetch-docs", "stepType": "mcp-tool", "stepIndex": 0, "totalSteps": 3, "timestamp": 1705849201500, "duration": 1500 },
+    { "type": "step-start", "stepId": "analyze", "stepType": "llm", "stepIndex": 1, "totalSteps": 3, "timestamp": 1705849201501 },
+    ...
+  ]
+}
+```
+
+### Event Types
+
+| Event | Description | Extra Fields |
+|-------|-------------|--------------|
+| `step-start` | Step execution begins | — |
+| `step-complete` | Step completed successfully | `duration` (ms) |
+| `step-error` | Step threw an error | `duration` (ms), `errorType` |
+
+### Error Types (Sanitized)
+
+For security, error messages are never exposed. Instead, errors are categorized:
+
+| Error Type | Description |
+|------------|-------------|
+| `timeout` | Operation timed out |
+| `auth_failed` | Authentication/authorization error |
+| `validation` | Input validation failed |
+| `network` | Network connectivity issue |
+| `unknown` | Uncategorized error |
+
+### Streaming with Observability
+
+For `chat` primitives (streaming), trace events are sent as transient data before the stream.
+
+> **Note:** Transient data parts are only accessible via the `onData` callback. They do not appear in the `messages` array.
+
+```typescript
+// Client-side handling with useChat (AI SDK v6)
+import { useChat } from '@ai-sdk/react';
+import { DefaultChatTransport } from 'ai';
+
+const [streamTrace, setStreamTrace] = useState<StepEvent[]>([]);
+
+const { messages, sendMessage, status } = useChat({
+  transport: new DefaultChatTransport({
+    api: '/api/beddel/chat',
+    body: { agentId: 'observability-demo-stream' },
+  }),
+  onData: (dataPart) => {
+    if (dataPart.type === 'data-trace') {
+      setStreamTrace(dataPart.data.events);
+    }
+  },
+});
 ```
 
 ## Built-in Providers

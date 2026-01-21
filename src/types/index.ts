@@ -3,12 +3,56 @@
  * Core interfaces for the workflow engine
  */
 
+import type { StepEvent, ObservabilityConfig } from './observability';
+
+// Re-export observability types
+export type {
+  ObservabilityConfig,
+  StepEventBase,
+  StepStartEvent,
+  StepCompleteEvent,
+  StepErrorEvent,
+  StepEvent,
+} from './observability';
+
+
 /**
  * Metadata from YAML header section
  */
 export interface YamlMetadata {
+    /** Agent display name */
     name: string;
+    /** Semantic version (e.g., "1.0.0") */
     version: string;
+    /** Optional description of the agent's purpose */
+    description?: string;
+    /** Whether this is a built-in agent bundled with the package */
+    builtin?: boolean;
+    /** Observability configuration for trace collection */
+    observability?: ObservabilityConfig;
+}
+
+/**
+ * Standard response shape for blocking workflows.
+ * Generic T represents the shape of the 'data' field.
+ * 
+ * @example
+ * ```typescript
+ * import type { BeddelResponse } from 'beddel/client';
+ * 
+ * interface MyData { results: string[] }
+ * type MyResponse = BeddelResponse<MyData>;
+ * ```
+ */
+export interface BeddelResponse<T = unknown> {
+    /** Whether the workflow executed successfully */
+    success: boolean;
+    /** Response data (shape defined by workflow's return template) */
+    data?: T;
+    /** Execution trace (only present when observability is enabled) */
+    __trace?: StepEvent[];
+    /** Error message (only present on failure) */
+    error?: string;
 }
 
 /**
@@ -52,6 +96,8 @@ export interface ExecutionContext {
     input: unknown;
     /** Map of step results keyed by step.result name */
     variables: Map<string, unknown>;
+    /** Trace array for observability (only present when enabled) */
+    trace?: StepEvent[];
 }
 
 /**

@@ -17,11 +17,17 @@
 
 ### WorkflowExecutor (`src/core/workflow.ts`)
 
-**Responsibility:** Execute workflow steps sequentially, managing context and variable storage.
+**Responsibility:** Execute workflow steps sequentially, managing context, variable storage, and observability tracing.
 
 **Key Interfaces:**
 - `constructor(yaml: ParsedYaml)`
 - `execute(input: any): Promise<Response | Record<string, unknown>>`
+
+**Observability Support:**
+- Reads `metadata.observability.enabled` from YAML
+- Emits `step-start`, `step-complete`, `step-error` events
+- Attaches `__trace` array to response when enabled
+- Sanitizes error types for security (never exposes full error messages)
 
 **Dependencies:** `handlerRegistry` (primitives)
 
@@ -84,6 +90,7 @@
 - Converts `UIMessage[]` (from `useChat`) to `ModelMessage[]`
 - **Resolves variables in system prompt** (e.g., `$stepResult.mcpDocs.data`)
 - Supports `onFinish` and `onError` lifecycle callbacks
+- **Observability:** When trace is present, sends events as transient data before stream
 
 **Key Interfaces:**
 - `chatPrimitive(config: StepConfig, context: ExecutionContext): Promise<Response>`
@@ -260,9 +267,10 @@ Pre-configured agents bundled with the package, organized by category:
 | `business-analyzer` | `google-business/` | `google-business` + `llm` | Business reviews analyzer |
 | `newsletter-signup` | `marketing/` | `llm` + `notion` | Lead capture with Notion |
 | `text-generator` | `utility/` | `llm` | Text generation (non-streaming) |
+| `observability-demo` | `observability/` | `mcp-tool` + `llm` | Multi-step demo with trace collection |
 | `multi-step-assistant` | `examples/` | `call-agent` + `llm` | 4-step analysis pipeline |
 
-**Categories:** `chat/`, `mcp/`, `google-business/`, `marketing/`, `utility/`, `examples/`
+**Categories:** `chat/`, `mcp/`, `google-business/`, `marketing/`, `utility/`, `observability/`, `examples/`
 
 ---
 

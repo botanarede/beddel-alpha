@@ -20,6 +20,8 @@
 import {
     streamText,
     convertToModelMessages,
+    createUIMessageStream,
+    createUIMessageStreamResponse,
     stepCountIs,
     type UIMessage,
 } from 'ai';
@@ -58,6 +60,55 @@ export const chatPrimitive: PrimitiveHandler = async (
     // Resolve system prompt (may contain $stepResult.* variables from previous steps)
     const system = resolveVariables(llmConfig.system, context) as string | undefined;
 
+    // Check if we have trace to send (observability enabled)
+    const hasTrace = context.trace && context.trace.length > 0;
+
+    if (hasTrace) {
+        // Use createUIMessageStream to send trace before chat stream
+        const stream = createUIMessageStream({
+            execute: ({ writer }) => {
+                // Send trace as transient data part
+                writer.write({
+                    type: 'data-trace',
+                    id: 'workflow-trace',
+                    data: { events: context.trace },
+                    transient: true,
+                });
+
+                // Stream the LLM response
+                const result = streamText({
+                    model,
+                    messages,
+                    system,
+                    stopWhen: hasTools ? stepCountIs(5) : undefined,
+                    tools,
+                    onFinish: async ({ text, finishReason, usage, totalUsage, steps, response }) => {
+                        if (llmConfig.onFinish) {
+                            const callback = callbackRegistry[llmConfig.onFinish];
+                            if (callback) {
+                                await callback({ text, finishReason, usage, totalUsage, steps, response });
+                            }
+                        }
+                    },
+                    onError: ({ error }) => {
+                        if (llmConfig.onError) {
+                            const callback = callbackRegistry[llmConfig.onError];
+                            if (callback) {
+                                callback({ error });
+                            }
+                        }
+                        console.error('[Beddel] Stream error:', error);
+                    },
+                });
+
+                writer.merge(result.toUIMessageStream());
+            },
+        });
+
+        return createUIMessageStreamResponse({ stream });
+    }
+
+    // No trace: use current simple behavior
     const result = streamText({
         model,
         messages,

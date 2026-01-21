@@ -1,0 +1,67 @@
+metadata:
+  name: "Beddel Protocol Expert"
+  version: "1.0.0"
+  builtin: true
+  description: "Multi-step assistant demonstrating observability - Expert in Beddel Protocol"
+  observability:
+    enabled: true
+
+workflow:
+  # Step 1: Fetch Beddel documentation via GitMCP
+  - id: "fetch-docs"
+    type: "mcp-tool"
+    config:
+      url: "https://gitmcp.io/botanarede/beddel"
+      tool: "fetch_beddel_documentation"
+      arguments: {}
+    result: "beddelDocs"
+
+  # Step 2: Search for specific content in documentation
+  - id: "search-docs"
+    type: "mcp-tool"
+    config:
+      url: "https://gitmcp.io/botanarede/beddel"
+      tool: "search_beddel_documentation"
+      arguments:
+        query: "$input.query"
+    result: "searchResults"
+
+  # Step 3: Generate expert response using documentation context
+  - id: "generate-response"
+    type: "llm"
+    config:
+      provider: "google"
+      model: "gemini-2.0-flash-exp"
+      system: |
+        You are an expert assistant specialized in the Beddel Protocol.
+        Use the documentation provided to answer questions accurately.
+        
+        Always respond in Portuguese (Brazilian).
+        Be concise but complete. Include code examples when relevant.
+        If the documentation doesn't cover the topic, say so clearly.
+        
+        ## Beddel Documentation Index
+        $stepResult.beddelDocs.data
+        
+        ## Search Results for User Query
+        $stepResult.searchResults.data
+      messages:
+        - role: "user"
+          content: "$input.query"
+    result: "expertResponse"
+
+  # Step 4: Structure final output
+  - id: "format-output"
+    type: "output-generator"
+    config:
+      template:
+        query: "$input.query"
+        answer: "$stepResult.expertResponse.text"
+        sources:
+          - "Beddel Protocol Documentation"
+          - "https://github.com/botanarede/beddel"
+    result: "finalOutput"
+
+return:
+  success: true
+  data: "$stepResult.finalOutput"
